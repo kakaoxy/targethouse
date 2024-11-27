@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房源数据分析</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 350px;  
+            width: 100%;
+            margin-bottom: 0;  
+        }
+        
+        .house-list {
+            max-height: 800px;  
+            overflow-y: auto;
+        }
+        
+        .search-bar {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 100%;  
+        }
+
+        .house-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .house-image {
+            width: 100px;
+            height: 75px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .house-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .house-info h6 {
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chart-card {
+            margin-bottom: 20px;
+            height: calc(50% - 10px);  
+        }
+        
+        .card-header {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;  
+            top: 0;
+            z-index: 1;
+        }
+        
+        .card-body {
+            padding: 10px;  
+        }
+        
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+            padding: 15px;
+        }
+        
+        .price {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .list-group {
+            max-height: 800px;  
+            overflow-y: auto;
+            padding-bottom: 0;  
+        }
+
+        .chart-row {
+            height: 100%;  
+            margin: 0;  
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* 美化滚动条 */
+        .list-group::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .list-group::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .list-group::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .list-group::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container-fluid py-4">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" v-model="searchQuery" placeholder="请输入小区名称">
+                        <button class="btn btn-primary" @click="searchHouses" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm" role="status"></span>
+                            {{ loading ? '搜索中...' : '搜索' }}
+                        </button>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="btn-group me-3" role="group">
+                                <input type="radio" class="btn-check" name="houseType" id="allType" value="" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="allType">全部</label>
+
+                                <input type="radio" class="btn-check" name="houseType" id="oneRoom" value="1房" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="oneRoom">1房</label>
+
+                                <input type="radio" class="btn-check" name="houseType" id="twoRoom" value="2房" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="twoRoom">2房</label>
+
+                                <input type="radio" class="btn-check" name="houseType" id="threeRoom" value="3房" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="threeRoom">3房</label>
+
+                                <input type="radio" class="btn-check" name="houseType" id="fourRoom" value="4房" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="fourRoom">4房</label>
+
+                                <input type="radio" class="btn-check" name="houseType" id="otherRoom" value="其他" v-model="selectedHouseType" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="otherRoom">其他</label>
+                            </div>
+
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="floorLevel" id="allFloor" value="" v-model="selectedFloorLevel" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="allFloor">全部</label>
+
+                                <input type="radio" class="btn-check" name="floorLevel" id="lowFloor" value="低楼层" v-model="selectedFloorLevel" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="lowFloor">低楼层</label>
+
+                                <input type="radio" class="btn-check" name="floorLevel" id="midFloor" value="中楼层" v-model="selectedFloorLevel" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="midFloor">中楼层</label>
+
+                                <input type="radio" class="btn-check" name="floorLevel" id="highFloor" value="高楼层" v-model="selectedFloorLevel" @change="filterHouses">
+                                <label class="btn btn-outline-secondary" for="highFloor">高楼层</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 房源列表和图表区域 -->
+        <div class="row gx-4">
+            <!-- 在售房源列表 -->
+            <div class="col-md-4">
+                <div class="card h-100">  
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>在售房源</span>
+                        <div class="d-flex align-items-center">
+                            <div class="btn-group me-3" role="group">
+                                <input type="radio" class="btn-check" name="onSaleSort" id="onSaleTotalPriceSort" v-model="onSaleSortField" value="总价" @click="toggleOnSaleSort('总价')">
+                                <label class="btn btn-sm btn-outline-secondary" for="onSaleTotalPriceSort">
+                                    总价 <span v-if="onSaleSortField === '总价'">{{ onSaleSortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="onSaleSort" id="onSaleUnitPriceSort" v-model="onSaleSortField" value="单价" @click="toggleOnSaleSort('单价')">
+                                <label class="btn btn-sm btn-outline-secondary" for="onSaleUnitPriceSort">
+                                    单价 <span v-if="onSaleSortField === '单价'">{{ onSaleSortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                                </label>
+                            </div>
+                            <span class="text-muted">共 {{ displayOnSaleHouses.length }} 套</span>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <div v-for="(house, index) in displayOnSaleHouses" :key="house._id" class="list-group-item">
+                            <div class="house-item">
+                                <!-- <img v-if="house.户型图" :src="house.户型图" :alt="house.户型" class="house-image"> -->
+                                <div class="house-info">
+                                    <h6 class="mb-1">
+                                        <a :href="house.房源链接" target="_blank" class="text-decoration-none">{{ house.小区名 }}</a>
+                                    </h6>
+                                    <div class="mb-1">{{ house.户型 }} | {{ house.面积 }}㎡ | {{ house.楼层 }}</div>
+                                    <div class="price mb-1">总价：{{ house.总价 }}万 | {{ house.单价 }}元/㎡</div>
+                                    <small class="text-muted">挂牌时间：{{ house.挂牌时间 }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 成交房源列表 -->
+            <div class="col-md-4">
+                <div class="card h-100">  
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>成交房源</span>
+                        <div class="d-flex align-items-center">
+                            <div class="btn-group me-3" role="group">
+                                <input type="radio" class="btn-check" name="soldSort" id="soldTotalPriceSort" v-model="soldSortField" value="总价" @click="toggleSoldSort('总价')">
+                                <label class="btn btn-sm btn-outline-secondary" for="soldTotalPriceSort">
+                                    总价 <span v-if="soldSortField === '总价'">{{ soldSortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="soldSort" id="soldUnitPriceSort" v-model="soldSortField" value="单价" @click="toggleSoldSort('单价')">
+                                <label class="btn btn-sm btn-outline-secondary" for="soldUnitPriceSort">
+                                    单价 <span v-if="soldSortField === '单价'">{{ soldSortOrder === 'asc' ? '⬆️' : '⬇️' }}</span>
+                                </label>
+                            </div>
+                            <span class="text-muted">共 {{ displaySoldHouses.length }} 套</span>
+                        </div>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <div v-for="(house, index) in displaySoldHouses" :key="house._id" class="list-group-item">
+                            <h6 class="mb-1">
+                                <a :href="house.房源链接" target="_blank" class="text-decoration-none">{{ house.小区名 }}</a>
+                            </h6>
+                            <div class="mb-1">{{ house.户型 }} | {{ house.面积 }}㎡ | {{ house.楼层信息 }}</div>
+                            <div class="price mb-1">总价：{{ house.总价 }}万 | {{ house.单价 }}元/㎡</div>
+                            <small class="text-muted">成交时间：{{ house.成交时间 }} | {{ house.挂牌价 }} | {{ house.成交周期 }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图表区域 -->
+            <div class="col-md-4">
+                <!-- 在售房源图表 -->
+                <div class="card chart-card">
+                    <div class="card-header">在售房源分析</div>
+                    <div class="card-body">
+                        <div class="row chart-row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="onSaleTypeChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="onSaleFloorChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 成交房源图表 -->
+                <div class="card chart-card">
+                    <div class="card-header">成交房源分析</div>
+                    <div class="card-body">
+                        <div class="row chart-row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="soldTypeChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="soldFloorChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>

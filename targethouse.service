@@ -1,0 +1,18 @@
+[Unit]
+Description=Target House Service
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/var/www/targethouse
+Environment="PATH=/var/www/targethouse/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=/var/www/targethouse"
+ExecStart=/var/www/targethouse/venv/bin/gunicorn main:app -c gunicorn_config.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/targethouse/output.log
+StandardError=append:/var/log/targethouse/error.log
+
+[Install]
+WantedBy=multi-user.target
