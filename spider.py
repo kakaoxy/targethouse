@@ -10,6 +10,11 @@ from typing import Dict, List, Tuple
 from pymongo import MongoClient
 from urllib.parse import quote_plus
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+# 加载.env文件
+load_dotenv()
 
 # 设置日志
 logging.basicConfig(
@@ -54,9 +59,14 @@ class BeikeSpider:
 
         # 连接MongoDB
         try:
-            MONGO_USERNAME = quote_plus("root")
-            MONGO_PASSWORD = quote_plus("@house531..")
-            MONGO_URI = f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@101.126.149.86:27017/?authSource=admin"
+            MONGO_USERNAME = quote_plus(os.getenv("MONGO_USERNAME"))
+            MONGO_PASSWORD = quote_plus(os.getenv("MONGO_PASSWORD"))
+            MONGO_HOST = os.getenv("MONGO_HOST")
+            MONGO_PORT = os.getenv("MONGO_PORT")
+            MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE")
+            
+            MONGO_URI = f"mongodb://{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/?authSource={MONGO_AUTH_SOURCE}"
+            
             self.client = MongoClient(MONGO_URI)
             
             # 验证连接
