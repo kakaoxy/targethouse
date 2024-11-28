@@ -1,7 +1,9 @@
 const { createApp } = Vue;
+const { ElMessage } = ElementPlus;
 
 const API_BASE_URL = 'http://101.126.149.86/api';
 
+// 创建Vue应用实例
 const app = createApp({
     data() {
         return {
@@ -130,17 +132,42 @@ const app = createApp({
                 return;
             }
 
+            // 打印当前选择的户型
+            console.log('Selected house type:', this.selectedHouseType);
+
             this.filteredOnSaleHouses = this.onSaleHouses.filter(house => {
                 let matchHouseType = true;
                 let matchFloorLevel = true;
 
                 if (this.selectedHouseType) {
                     const houseType = house.户型 || '';
+                    // 打印房源的户型信息
+                    console.log('House type:', houseType);
+
                     if (this.selectedHouseType === '其他') {
-                        matchHouseType = !houseType.match(/^[1-4][室房]/);
+                        matchHouseType = !houseType.match(/^[一二三四1234][室房]/);
                     } else {
-                        const rooms = this.selectedHouseType.replace('房', '');
-                        matchHouseType = houseType.match(new RegExp(`^${rooms}[室房]`));
+                        // 根据选择的户型构建匹配规则
+                        let pattern;
+                        switch(this.selectedHouseType) {
+                            case '一室':
+                                pattern = /^([一1])[室房]/;
+                                break;
+                            case '两室':
+                                pattern = /^([二2])[室房]/;
+                                break;
+                            case '三室':
+                                pattern = /^([三3])[室房]/;
+                                break;
+                            case '四室':
+                                pattern = /^([四4])[室房]/;
+                                break;
+                            default:
+                                pattern = new RegExp(`^${this.selectedHouseType.replace(/[室房]/, '')}[室房]`);
+                        }
+                        matchHouseType = houseType.match(pattern);
+                        // 打印匹配结果
+                        console.log('Pattern:', pattern, 'Match result:', matchHouseType);
                     }
                 }
 
@@ -159,20 +186,41 @@ const app = createApp({
                 if (this.selectedHouseType) {
                     const houseType = house.户型 || '';
                     if (this.selectedHouseType === '其他') {
-                        matchHouseType = !houseType.match(/^[1-4][室房]/);
+                        matchHouseType = !houseType.match(/^[一二三四1234][室房]/);
                     } else {
-                        const rooms = this.selectedHouseType.replace('房', '');
-                        matchHouseType = houseType.match(new RegExp(`^${rooms}[室房]`));
+                        // 根据选择的户型构建匹配规则
+                        let pattern;
+                        switch(this.selectedHouseType) {
+                            case '一室':
+                                pattern = /^([一1])[室房]/;
+                                break;
+                            case '两室':
+                                pattern = /^([二2])[室房]/;
+                                break;
+                            case '三室':
+                                pattern = /^([三3])[室房]/;
+                                break;
+                            case '四室':
+                                pattern = /^([四4])[室房]/;
+                                break;
+                            default:
+                                pattern = new RegExp(`^${this.selectedHouseType.replace(/[室房]/, '')}[室房]`);
+                        }
+                        matchHouseType = houseType.match(pattern);
                     }
                 }
 
                 if (this.selectedFloorLevel) {
-                    const floorInfo = house.楼层信息 || '';  
+                    const floorInfo = house.楼层信息 || '';
                     matchFloorLevel = floorInfo.includes(this.selectedFloorLevel);
                 }
 
                 return matchHouseType && matchFloorLevel;
             });
+
+            // 打印筛选后的结果数量
+            console.log('Filtered on-sale houses:', this.filteredOnSaleHouses.length);
+            console.log('Filtered sold houses:', this.filteredSoldHouses.length);
 
             this.$nextTick(() => {
                 this.updateCharts();
@@ -214,39 +262,15 @@ const app = createApp({
 
                 // 转换回数组
                 this.onSaleHouses = Array.from(onSaleMap.values());
-                this.filteredOnSaleHouses = this.onSaleHouses; // 初始化过滤后的数据
-                
-                // 检查去重结果
-                const duplicateCheck = new Set();
-                const duplicates = this.onSaleHouses.filter(house => {
-                    if (!house.贝壳编号) return false;
-                    const id = house.贝壳编号.toString().trim();
-                    if (duplicateCheck.has(id)) {
-                        console.warn('发现重复的贝壳编号:', id);
-                        return true;
-                    }
-                    duplicateCheck.add(id);
-                    return false;
-                });
-
-                if (duplicates.length > 0) {
-                    console.warn('仍然存在重复的房源:', duplicates);
-                }
-
-                console.log('在售房源数据(去重后):', this.onSaleHouses);
 
                 // 获取成交房源数据
                 const soldResponse = await axios.get(`/api/houses/sold?community=${encodeURIComponent(this.searchQuery)}&limit=1000`);
                 this.soldHouses = soldResponse.data.data || [];
-                this.filteredSoldHouses = this.soldHouses; // 初始化过滤后的数据
-                console.log('成交房源数据:', this.soldHouses);
 
-                // 应用当前的筛选条件
-                if (this.selectedHouseType || this.selectedFloorLevel) {
-                    this.filterHouses();
-                }
-
-                // 等待DOM更新后更新图表
+                // 应用筛选条件
+                this.filterHouses();
+                
+                // 更新图表
                 this.$nextTick(() => {
                     this.updateCharts();
                 });
@@ -433,9 +457,18 @@ const app = createApp({
         }
     },
     mounted() {
-        this.fetchOnSaleHouses();
-        this.fetchSoldHouses();
+        // 设置默认搜索小区
+        this.searchQuery = '新泾七村';
+        // 执行搜索
+        this.searchHouses();
     }
 });
+
+// 全局使用Element Plus
+for (const [key, component] of Object.entries(ElementPlus)) {
+    if (key.startsWith('El')) {
+        app.component(key, component);
+    }
+}
 
 app.mount('#app');
