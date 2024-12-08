@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Page Info Crawler",
+  "version": "1.0",
+  "description": "抓取当前页面信息并保存为Excel",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*.ke.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.ke.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+} 

@@ -46,6 +46,7 @@ log/
 # System Files
 .DS_Store
 Thumbs.db
+cookies.json
 
 # Frontend
 node_modules/
