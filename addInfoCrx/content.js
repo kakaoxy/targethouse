@@ -1,3 +1,13 @@
+// 将getCommunityId函数移到最外层作用域
+const getCommunityId = (url) => {
+  // 尝试从URL中提取小区ID
+  const match = url.match(/\/(?:pg\d+)?c(\d+)/);
+  if (match) {
+    return match[1];
+  }
+  return '';
+};
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'crawl') {
     console.log('开始爬取流程...');
@@ -5,16 +15,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // 创建一个端口连接
     const port = chrome.runtime.connect({name: "crawlProgress"});
-
-    // 修改获取小区ID的逻辑
-    const getCommunityId = (url) => {
-      // 尝试从URL中提取小区ID
-      const match = url.match(/\/(?:pg\d+)?c(\d+)/);
-      if (match) {
-        return match[1];
-      }
-      return '';
-    };
 
     const scrollAndCollectData = async () => {
       try {
