@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from typing import List, Optional
+from typing import List, Optional, Dict
 from database import Database
 import uvicorn
 import os
@@ -9,6 +9,7 @@ import traceback
 import logging
 import sys
 from fastapi.responses import JSONResponse
+from datetime import datetime
 
 # 配置日志
 logging.basicConfig(
@@ -70,6 +71,45 @@ async def get_sold_houses(
         return {"data": houses}
     except Exception as e:
         error_msg = f"获取成交房源数据时出错: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+@app.post("/api/houses/sold")
+async def add_sold_houses(houses: List[Dict] = Body(...)):
+    """
+    添加成交房源记录
+    
+    Args:
+        houses: 成交房源记录列表，每个记录包含房源详细信息
+    
+    Returns:
+        包含操作结果的JSON响应
+    """
+    try:
+        logger.info(f"开始添加成交房源数据，记录数: {len(houses)}")
+        
+        # 添加时间戳
+        for house in houses:
+            house['数据创建时间'] = datetime.now()
+        
+        # 批量插入记录
+        result = db.save_sold_houses_batch(houses)
+        
+        # 获取插入的记录数
+        inserted_count = len(result.inserted_ids) if result else 0
+        logger.info(f"成功添加 {inserted_count} 条记录")
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": f"成功添加 {inserted_count} 条记录",
+                "inserted_count": inserted_count
+            }
+        )
+        
+    except Exception as e:
+        error_msg = f"添加成交房源数据时出错: {str(e)}\n{traceback.format_exc()}"
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 

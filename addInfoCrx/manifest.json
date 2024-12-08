@@ -9,7 +9,8 @@
     "downloads"
   ],
   "host_permissions": [
-    "*://*.ke.com/*"
+    "*://*.ke.com/*",
+    "http://localhost:8000/*"
   ],
   "action": {
     "default_popup": "popup.html"

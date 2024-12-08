@@ -77,35 +77,68 @@ document.getElementById('crawlBtn').addEventListener('click', async () => {
 });
 
 // 确认按钮事件
-document.getElementById('confirmBtn').addEventListener('click', () => {
+document.getElementById('confirmBtn').addEventListener('click', async () => {
   if (!crawledData) return;
   
   const statusDiv = document.getElementById('status');
-  statusDiv.textContent = '正在保存数据...';
+  statusDiv.textContent = '正在处理数据...';
   
-  // 发送数据到background script处理导出
-  chrome.runtime.sendMessage({
-    action: 'exportExcel',
-    data: crawledData
-  }, (result) => {
-    if (chrome.runtime.lastError) {
-      statusDiv.textContent = '导出失败：' + chrome.runtime.lastError.message;
-      console.error('导出错误:', chrome.runtime.lastError);
-      return;
-    }
-    
-    if (result && result.success) {
-      statusDiv.textContent = '爬取完成！请在下载栏查看CSV文件。';
-      console.log('下载ID:', result.downloadId);
+  try {
+    // 1. 保存为CSV文件
+    chrome.runtime.sendMessage({
+      action: 'exportExcel',
+      data: crawledData
+    }, async (result) => {
+      if (chrome.runtime.lastError) {
+        statusDiv.textContent = '导出CSV失败：' + chrome.runtime.lastError.message;
+        console.error('导出错误:', chrome.runtime.lastError);
+        return;
+      }
       
-      // 隐藏预览和按钮
-      document.getElementById('previewArea').style.display = 'none';
-      document.querySelector('.buttons').style.display = 'none';
-    } else {
-      statusDiv.textContent = '导出失败：' + (result?.error || '未知错误');
-      console.error('导出失败:', result?.error);
-    }
-  });
+      if (!result || !result.success) {
+        statusDiv.textContent = '导出CSV失败：' + (result?.error || '未知错误');
+        console.error('导出失败:', result?.error);
+        return;
+      }
+      
+      // 2. 调用后端API保存数据
+      try {
+        statusDiv.textContent = '正在保存到数据库...';
+        
+        const response = await fetch('http://localhost:8000/api/houses/sold', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(crawledData)
+        });
+        
+        const apiResult = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(apiResult.detail || '保存到数据库失败');
+        }
+        
+        console.log('API响应:', apiResult);
+        
+        // 3. 显示完成信息
+        statusDiv.textContent = `处理完成！
+          CSV文件已保存（下载ID: ${result.downloadId}）
+          数据库新增: ${apiResult.inserted_count} 条记录`;
+        
+        // 隐藏预览和按钮
+        document.getElementById('previewArea').style.display = 'none';
+        document.querySelector('.buttons').style.display = 'none';
+        
+      } catch (error) {
+        console.error('API调用错误:', error);
+        statusDiv.textContent = `CSV已保存，但数据库保存失败: ${error.message}`;
+      }
+    });
+  } catch (error) {
+    statusDiv.textContent = '处理失败：' + error.message;
+    console.error('处理错误:', error);
+  }
 });
 
 // 取消按钮事件
