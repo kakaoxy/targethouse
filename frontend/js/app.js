@@ -1,7 +1,7 @@
 const { createApp } = Vue;
 const { ElMessage } = ElementPlus;
 
-const API_BASE_URL = 'http://101.126.149.86/api';
+const API_BASE_URL = 'http://101.126.149.86:5000';
 
 // 创建Vue应用实例
 const app = createApp({

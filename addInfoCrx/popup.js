@@ -1,5 +1,4 @@
 let crawledData = null;
-let currentType = 'sold'; // 当前爬取类型：sold或onSale
 
 function showPreview(data) {
   const previewArea = document.getElementById('previewArea');
@@ -37,15 +36,6 @@ function showPreview(data) {
   });
 }
 
-// 添加标签切换事件
-document.querySelectorAll('.tab-button').forEach(button => {
-  button.addEventListener('click', () => {
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    button.classList.add('active');
-    currentType = button.dataset.type;
-  });
-});
-
 // 修改爬取按钮事件
 document.getElementById('crawlBtn').addEventListener('click', async () => {
   const statusDiv = document.getElementById('status');
@@ -57,7 +47,8 @@ document.getElementById('crawlBtn').addEventListener('click', async () => {
     statusDiv.textContent = '正在爬取数据，请稍候...';
     
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    
+    console.log('当前页面URL:', tab.url);  // 添加URL日志
+
     // 创建或重置进度条
     if (!progressDiv) {
       progressDiv = document.createElement('div');
@@ -113,8 +104,18 @@ document.getElementById('crawlBtn').addEventListener('click', async () => {
       }
     });
 
+    // 根据URL判断页面类型并发送对应的爬取命令
+    const isChengjiao = tab.url.includes('/chengjiao/');
+    const isErshoufang = tab.url.includes('/ershoufang/');
+    
+    if (!isChengjiao && !isErshoufang) {
+      throw new Error('请在链家成交记录或在售房源页面使用此功能');
+    }
+
+    const action = isChengjiao ? 'crawl' : 'crawlOnSale';
+    console.log('爬取类型:', action);  // 添加动作类型日志
+
     // 发送爬取命令
-    const action = tab.url.includes('.ke.com/chengjiao/c') ? 'crawl' : 'crawlOnSale';
     chrome.tabs.sendMessage(tab.id, {action: action}, (response) => {
       if (response && response.type === 'data') {
         if (!response.data || response.data.length === 0) {
@@ -182,7 +183,7 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         
         // 根据当前页面URL判断调用哪个API
         const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-        const apiEndpoint = tab.url.includes('.ke.com/chengjiao/c') 
+        const apiEndpoint = tab.url.includes('/chengjiao/') 
           ? '/api/houses/sold' 
           : '/api/houses/on-sale';
 
@@ -194,7 +195,10 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
           return record;
         });
         
-        const response = await fetch(`http://localhost:8000${apiEndpoint}`, {
+        console.log('准备发送到API:', apiEndpoint);  // 添加日志
+        console.log('数据示例:', dataToSave[0]);     // 添加日志
+        
+        const response = await fetch(`http://101.126.149.86:5000${apiEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -202,13 +206,13 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
           body: JSON.stringify(dataToSave)
         });
         
+        console.log('API响应状态:', response.status);  // 添加日志
         const apiResult = await response.json();
+        console.log('API响应内容:', apiResult);       // 添加日志
         
         if (!response.ok) {
           throw new Error(apiResult.detail || '保存到数据库失败');
         }
-        
-        console.log('API响应:', apiResult);
         
         // 3. 显示完成信息
         statusDiv.textContent = `处理完成！

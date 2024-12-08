@@ -1,21 +1,32 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'crawl') {
     console.log('开始爬取流程...');
+    console.log('当前页面URL:', window.location.href);
     
     // 创建一个端口连接
     const port = chrome.runtime.connect({name: "crawlProgress"});
 
+    // 修改获取小区ID的逻辑
+    const getCommunityId = (url) => {
+      // 尝试从URL中提取小区ID
+      const match = url.match(/\/(?:pg\d+)?c(\d+)/);
+      if (match) {
+        return match[1];
+      }
+      return '';
+    };
+
     const scrollAndCollectData = async () => {
       try {
-        // 检查是否为成交页面
-        if (!window.location.href.includes('.ke.com/chengjiao/c')) {
+        // 检查是否为成交页面，只要URL包含chengjiao即可
+        if (!window.location.href.match(/\.ke\.com\/.*chengjiao/)) {
           console.error('页面URL不符合要求');
-          throw new Error('当前页面不是链家成交记录页面');
+          throw new Error('请在链家成交记录页面使用此功能');
         }
 
         // 获取小区ID
-        const communityId = window.location.href.match(/\/c(\d+)/)?.[1] || '';
-        console.log('小区ID:', communityId);
+        const communityId = getCommunityId(window.location.href);
+        console.log('提取的小区ID:', communityId);
 
         // 滚动加载函数
         const scrollToBottom = async () => {
@@ -196,8 +207,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const city = cityElement ? cityElement.textContent.trim().replace('房产', '') : '';
             console.log(`城市信息: ${city}`);
 
+            // 创建记录对象时强制设置小区ID
             const record = {
-              '小区ID': communityId,
+              '小区ID': communityId,  // 确保在最前面设置小区ID
               '房源ID': houseId,
               '小区名': titleParts[0] || '',
               '户型': titleParts[1] || '',
@@ -220,10 +232,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               '城市': city,
               '数据创建时间': new Date().toLocaleString('zh-CN')
             };
-            
-            console.log(`第 ${index + 1} 条记录:`, record);
+
+            console.log(`第 ${index + 1} 条记录的小区ID:`, communityId);
             pageData.push(record);
-            console.log(`第 ${index + 1} 条记录处理完成:`, record);
           } catch (err) {
             console.error(`处理第 ${index + 1} 条记录时出错:`, err);
             port.postMessage({
@@ -253,11 +264,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
         });
 
-        // 关闭端口连接
-        port.disconnect();
+        // 在发送数据前确保每条记录都有小区ID
+        const finalData = pageData.map(record => ({
+          '小区ID': communityId,  // 强制设置小区ID
+          ...record  // 保留其他字段
+        }));
 
-        // 返回数据
-        return pageData;
+        // 发送响应时使用finalData
+        sendResponse({
+          success: true,
+          type: 'data',
+          data: finalData
+        });
+
+        return finalData;
 
       } catch (error) {
         console.error('爬取过程发生错误:', error);
@@ -302,10 +322,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     const crawlOnSaleData = async () => {
       try {
-        // 检查是否为在售房源列表页面
-        if (!window.location.href.includes('.ke.com/ershoufang/c')) {
-          throw new Error('当前页面不是链家在售房源列表页面');
+        // 简化URL判断，只检查是否包含ershoufang
+        if (!window.location.href.match(/\.ke\.com\/.*ershoufang/)) {
+          throw new Error('请在链家在售房源页面使用此功能');
         }
+
+        // 获取小区ID
+        const communityId = getCommunityId(window.location.href);
+        console.log('提取的小区ID:', communityId);
 
         // 获取所有房源链接
         const houseLinks = document.querySelectorAll('#beike > div.sellListPage > div.content > div.leftContent > div:nth-child(4) > ul > li > div > div.title > a');
@@ -322,7 +346,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
 
         const pageData = [];
-        
+
         // 遍历每个房源链接
         for (const [index, link] of Array.from(houseLinks).entries()) {
           try {
@@ -356,6 +380,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
             // 提取房源信息
             const record = {
+              '小区ID': communityId,  // 确保在最前面设置小区ID
               '小区名': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.communityName > a.info.no_resblock_a'),
               '区域': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.areaName > span.info > a:nth-child(1)'),
               '商圈': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.areaName > span.info > a:nth-child(2)'),
@@ -389,15 +414,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.log(`解析建筑信息: ${buildingInfo} -> 年代: ${record['建筑年代']}, 结构: ${record['楼栋结构']}`);
             }
 
-            // 获取小区ID
-            const communityId = window.location.href.match(/\/c(\d+)/)?.[1] || '';
-            record['小区ID'] = communityId;
-
             // 获取房源ID
             const houseId = link.href.match(/\/(\d+)\.html/)?.[1] || '';
             record['房源ID'] = houseId;
 
-            console.log(`第 ${index + 1} 条记录:`, record);
+            // 在添加到pageData前再次确认小区ID存在
+            if (!record['小区ID']) {
+              record['小区ID'] = communityId;
+              console.log('补充小区ID:', communityId);
+            }
+
+            console.log(`第 ${index + 1} 条记录的小区ID:`, communityId);
             pageData.push(record);
 
             // 随机等待1-3秒
@@ -433,24 +460,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
         });
 
-        // 发送最终数据
+        // 在发送数据前确保每条记录都有小区ID
+        const finalData = pageData.map(record => ({
+          '小区ID': communityId,  // 强制设置小区ID
+          ...record  // 保留其他字段
+        }));
+
+        // 发送响应时使用finalData
         sendResponse({
           success: true,
           type: 'data',
-          data: pageData
+          data: finalData
         });
 
-        // 关闭端口连接
-        port.disconnect();
-
-        return pageData;
+        return finalData;
 
       } catch (error) {
+        console.error('爬取过程发生错误:', error);
         port.postMessage({
           success: false,
           error: error.message
         });
         port.disconnect();
+        
+        // 确保错误也通过sendResponse发送
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+        
         throw error;
       }
     };
