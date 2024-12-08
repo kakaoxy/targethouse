@@ -388,10 +388,28 @@ class Database:
                     
                     # 确保所有字段都存在，没有的设为空值
                     all_fields = [
-                        '小区ID', '房源ID', '小区名', '区域', '商圈', '户型', 
-                        '面积', '楼层', '朝向', '梯户比', '总价', '单价', 
-                        '挂牌时间', '上次交易', '抵押信息', '户型图', '贝壳编号', 
-                        '房源链接', '城市', '建筑年代', '楼栋结构', '数据创建时间'
+                        '小区ID',  # 确保小区ID在字段列表中
+                        '房源ID', 
+                        '小区名', 
+                        '区域', 
+                        '商圈', 
+                        '户型', 
+                        '面积', 
+                        '楼层', 
+                        '朝向', 
+                        '梯户比', 
+                        '总价', 
+                        '单价', 
+                        '挂牌时间', 
+                        '上次交易', 
+                        '抵押信息', 
+                        '户型图', 
+                        '贝壳编号', 
+                        '房源链接', 
+                        '城市', 
+                        '建筑年代', 
+                        '楼栋结构', 
+                        '数据创建时间'
                     ]
                     
                     processed_house = {field: house.get(field, None) for field in all_fields}
@@ -402,11 +420,12 @@ class Database:
                     logger.error(f"问题记录: {house}")
                     continue
             
-            # 添加唯一索引（如果不存在）
+            # 添加索引
             try:
                 self.collection_on_sale.create_index([("房源ID", 1)], unique=True, sparse=True)
+                self.collection_on_sale.create_index([("小区ID", 1)])  # 添加小区ID索引
             except Exception as e:
-                logger.info(f"创建唯一索引时出错（可能已存在）: {e}")
+                logger.info(f"创建索引时出错（可能已存在）: {e}")
             
             if not processed_houses:
                 logger.warning(f"没有新记录需要保存，{duplicate_count} 条重复记录被跳过")
@@ -420,7 +439,6 @@ class Database:
                 return result
             except Exception as e:
                 if "duplicate key error" in str(e):
-                    # 获取实际插入成功的记录数
                     successful_inserts = len(processed_houses) - duplicate_count
                     logger.warning(f"部分记录插入成功: {successful_inserts} 条新记录，{duplicate_count} 条重复记录被跳过")
                     return e.details
