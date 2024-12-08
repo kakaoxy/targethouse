@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Page Info Crawler",
+  "name": "贝壳房源信息Crawler",
   "version": "1.0",
-  "description": "抓取当前页面信息并保存为Excel",
+  "description": "将当前页面信息并保存为Excel",
   "permissions": [
     "activeTab",
     "scripting",

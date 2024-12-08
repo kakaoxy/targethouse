@@ -42,7 +42,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // 下载文件
       chrome.downloads.download({
         url: dataUrl,
-        filename: `链家成交记录_${timestamp}.csv`,
+        filename: `链家房源记录_${timestamp}.csv`,
         saveAs: true
       }, (downloadId) => {
         // 检查下载是否成功启动

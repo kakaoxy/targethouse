@@ -151,9 +151,12 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
   if (!crawledData) return;
   
   const statusDiv = document.getElementById('status');
-  statusDiv.textContent = '正在处理数据...';
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
   
   try {
+    statusDiv.textContent = '正在处理数据...';
+    
     // 1. 保存为CSV文件
     chrome.runtime.sendMessage({
       action: 'exportExcel',
@@ -162,12 +165,14 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       if (chrome.runtime.lastError) {
         statusDiv.textContent = '导出CSV失败：' + chrome.runtime.lastError.message;
         console.error('导出错误:', chrome.runtime.lastError);
+        btn.disabled = false;
         return;
       }
       
       if (!result || !result.success) {
         statusDiv.textContent = '导出CSV失败：' + (result?.error || '未知错误');
         console.error('导出失败:', result?.error);
+        btn.disabled = false;
         return;
       }
       
@@ -175,12 +180,26 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       try {
         statusDiv.textContent = '正在保存到数据库...';
         
-        const response = await fetch('http://localhost:8000/api/houses/sold', {
+        // 根据当前页面URL判断调用哪个API
+        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+        const apiEndpoint = tab.url.includes('.ke.com/chengjiao/c') 
+          ? '/api/houses/sold' 
+          : '/api/houses/on-sale';
+
+        // 确保每条记录都包含城市信息
+        const dataToSave = crawledData.map(record => {
+          if (!record['城市']) {
+            console.warn('记录缺少城市信息:', record);
+          }
+          return record;
+        });
+        
+        const response = await fetch(`http://localhost:8000${apiEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(crawledData)
+          body: JSON.stringify(dataToSave)
         });
         
         const apiResult = await response.json();
@@ -194,7 +213,8 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
         // 3. 显示完成信息
         statusDiv.textContent = `处理完成！
           CSV文件已保存（下载ID: ${result.downloadId}）
-          数据库新增: ${apiResult.inserted_count} 条记录`;
+          数据库新增: ${apiResult.inserted_count} 条记录
+          ${apiResult.message || ''}`;
         
         // 隐藏预览和按钮
         document.getElementById('previewArea').style.display = 'none';
@@ -203,11 +223,14 @@ document.getElementById('confirmBtn').addEventListener('click', async () => {
       } catch (error) {
         console.error('API调用错误:', error);
         statusDiv.textContent = `CSV已保存，但数据库保存失败: ${error.message}`;
+      } finally {
+        btn.disabled = false;
       }
     });
   } catch (error) {
     statusDiv.textContent = '处理失败：' + error.message;
     console.error('处理错误:', error);
+    btn.disabled = false;
   }
 });
 

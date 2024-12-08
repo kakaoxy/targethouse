@@ -1,9 +1,10 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'crawl') {
     console.log('开始爬取流程...');
-    console.log('当前页面URL:', window.location.href);
+    
+    // 创建一个端口连接
+    const port = chrome.runtime.connect({name: "crawlProgress"});
 
-    // 创建一个Promise来处理滚动加载
     const scrollAndCollectData = async () => {
       try {
         // 检查是否为成交页面
@@ -77,10 +78,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           throw new Error('页面上未找到成交记录');
         }
 
+        // 发送总数信息
+        port.postMessage({
+          success: true,
+          type: 'progress',
+          progress: {
+            type: 'total',
+            total: deals.length
+          }
+        });
+
         const pageData = [];
 
         for (const [index, deal] of deals.entries()) {
           try {
+            // 发送进度信息
+            port.postMessage({
+              success: true,
+              type: 'progress',
+              progress: {
+                type: 'progress',
+                current: index + 1,
+                total: deals.length,
+                message: `正在处理第 ${index + 1}/${deals.length} 个房源...`
+              }
+            });
+
             console.log(`开始处理第 ${index + 1} 条记录...`);
             
             // 基本信息
@@ -168,6 +191,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               console.warn(`第 ${index + 1} 条记录的户型图未完全加载`);
             }
 
+            // 获取城市信息
+            const cityElement = document.querySelector('#beike > div.dealListPage > div.content > div.leftContent > div.contentBottom.clear > div.crumbs.fl > a:nth-child(1)');
+            const city = cityElement ? cityElement.textContent.trim().replace('房产', '') : '';
+            console.log(`城市信息: ${city}`);
+
             const record = {
               '小区ID': communityId,
               '房源ID': houseId,
@@ -189,14 +217,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               '成交周期': dealCycle.replace(/[成交周期天]/g, ''),
               '房源链接': houseLink,
               '户型图': houseImage,
+              '城市': city,
               '数据创建时间': new Date().toLocaleString('zh-CN')
             };
             
+            console.log(`第 ${index + 1} 条记录:`, record);
             pageData.push(record);
             console.log(`第 ${index + 1} 条记录处理完成:`, record);
           } catch (err) {
             console.error(`处理第 ${index + 1} 条记录时出错:`, err);
-            console.error('错误详情:', err.stack);
+            port.postMessage({
+              success: true,
+              type: 'progress',
+              progress: {
+                type: 'error',
+                message: `处理第 ${index + 1} 个房源时出错: ${err.message}`
+              }
+            });
           }
         }
 
@@ -205,24 +242,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         console.log('所有记录处理完成，总数:', pageData.length);
+        
+        // 发送完成信息
+        port.postMessage({
+          success: true,
+          type: 'progress',
+          progress: {
+            type: 'complete',
+            total: pageData.length
+          }
+        });
+
+        // 关闭端口连接
+        port.disconnect();
+
+        // 返回数据
         return pageData;
+
       } catch (error) {
+        console.error('爬取过程发生错误:', error);
+        port.postMessage({
+          success: false,
+          error: error.message
+        });
+        port.disconnect();
         throw error;
       }
     };
 
-    // 执行爬取流程
+    // 执行爬取流程并发送响应
     scrollAndCollectData()
       .then(data => {
         console.log('爬取流程成功完成，准备发送数据...');
-        sendResponse({success: true, data: data});
+        sendResponse({
+          success: true,
+          type: 'data',
+          data: data
+        });
       })
       .catch(error => {
         console.error('爬取流程失败:', error.message);
-        sendResponse({success: false, error: error.message});
+        sendResponse({
+          success: false,
+          error: error.message
+        });
       });
 
-    return true; // 保持消息通道开启
+    // 告诉Chrome我们会异步发送响应
+    return true;
   }
 
   // 添加在售房源爬取功能

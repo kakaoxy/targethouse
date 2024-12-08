@@ -151,6 +151,8 @@ class Database:
                 query = {}
             if '小区名' in query:
                 query['小区名'] = query['小区名']
+            if '城市' in query:  # 添加城市查询支持
+                query['城市'] = query['城市']
             
             logger.info(f"查询条件: {query}")
             
@@ -177,6 +179,7 @@ class Database:
                 '成交周期': 1,
                 '房源链接': 1,
                 '户型图': 1,
+                '城市': 1,  # 添加城市字段
                 '数据创建时间': 1
             }
             
@@ -296,7 +299,7 @@ class Database:
                         '小区ID', '房源ID', '小区名', '户型', '面积', '朝向', '装修',
                         '楼层', '总层数', '建筑年代', '楼栋结构', '标签', '位置',
                         '总价', '单价', '挂牌价', '成交时间', '成交周期', '房源链接',
-                        '户型图', '数据创建时间'
+                        '户型图', '城市', '数据创建时间'  # 添加城市字段
                     ]
                     
                     processed_house = {field: house.get(field, None) for field in all_fields}
@@ -310,8 +313,10 @@ class Database:
             # 添加唯一索引（如果不存在）
             try:
                 self.collection_sold.create_index([("房源ID", 1)], unique=True, sparse=True)
+                # 添加城市字段的索引
+                self.collection_sold.create_index([("城市", 1)])
             except Exception as e:
-                logger.info(f"创建唯一索引时出错（可能已存在）: {e}")
+                logger.info(f"创建索引时出错（可能已存在）: {e}")
             
             if not processed_houses:
                 logger.warning(f"没有新记录需要保存，{duplicate_count} 条重复记录被跳过")
@@ -333,5 +338,95 @@ class Database:
             
         except Exception as e:
             logger.error(f"批量保存成交房源数据失败: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+
+    def save_on_sale_houses_batch(self, houses: List[Dict]):
+        """批量保存在售房源数据，对房源ID进行去重处理"""
+        try:
+            logger.info(f"开始批量保存在售房源数据，记录数: {len(houses)}")
+            
+            # 数据预处理
+            processed_houses = []
+            duplicate_count = 0
+            
+            # 获取已存在的房源ID列表
+            existing_house_ids = set(self.collection_on_sale.distinct('房源ID'))
+            logger.info(f"数据库中已存在 {len(existing_house_ids)} 个房源记录")
+            
+            for house in houses:
+                try:
+                    # 检查房源ID是否已存在
+                    if house.get('房源ID') in existing_house_ids:
+                        duplicate_count += 1
+                        logger.info(f"房源ID {house.get('房源ID')} 已存在，跳过")
+                        continue
+                        
+                    # 转换数值类型字段
+                    numeric_fields = {
+                        '总价': float,
+                        '单价': float,
+                        '面积': float,
+                        '建筑年代': int
+                    }
+                    
+                    for field, convert_func in numeric_fields.items():
+                        if field in house and house[field]:
+                            try:
+                                value = str(house[field]).strip()
+                                value = value.replace('万', '').replace('元/平', '')
+                                house[field] = convert_func(value)
+                            except (ValueError, TypeError) as e:
+                                logger.warning(f"字段 {field} 转换失败: {value}, 错误: {e}")
+                                house[field] = None
+                    
+                    # 确保必要字段存在
+                    required_fields = ['小区ID', '房源ID', '小区名']
+                    if not all(field in house and house[field] for field in required_fields):
+                        logger.warning(f"记录缺少必要字段: {house}")
+                        continue
+                    
+                    # 确保所有字段都存在，没有的设为空值
+                    all_fields = [
+                        '小区ID', '房源ID', '小区名', '区域', '商圈', '户型', 
+                        '面积', '楼层', '朝向', '梯户比', '总价', '单价', 
+                        '挂牌时间', '上次交易', '抵押信息', '户型图', '贝壳编号', 
+                        '房源链接', '城市', '建筑年代', '楼栋结构', '数据创建时间'
+                    ]
+                    
+                    processed_house = {field: house.get(field, None) for field in all_fields}
+                    processed_houses.append(processed_house)
+                    
+                except Exception as e:
+                    logger.error(f"处理记录时出错: {e}")
+                    logger.error(f"问题记录: {house}")
+                    continue
+            
+            # 添加唯一索引（如果不存在）
+            try:
+                self.collection_on_sale.create_index([("房源ID", 1)], unique=True, sparse=True)
+            except Exception as e:
+                logger.info(f"创建唯一索引时出错（可能已存在）: {e}")
+            
+            if not processed_houses:
+                logger.warning(f"没有新记录需要保存，{duplicate_count} 条重复记录被跳过")
+                return None
+            
+            # 使用 ordered=False 允许部分插入成功
+            try:
+                result = self.collection_on_sale.insert_many(processed_houses, ordered=False)
+                inserted_count = len(result.inserted_ids)
+                logger.info(f"成功保存 {inserted_count} 条新记录，{duplicate_count} 条重复记录被跳过")
+                return result
+            except Exception as e:
+                if "duplicate key error" in str(e):
+                    # 获取实际插入成功的记录数
+                    successful_inserts = len(processed_houses) - duplicate_count
+                    logger.warning(f"部分记录插入成功: {successful_inserts} 条新记录，{duplicate_count} 条重复记录被跳过")
+                    return e.details
+                raise
+            
+        except Exception as e:
+            logger.error(f"批量保存在售房源数据失败: {str(e)}")
             logger.error(traceback.format_exc())
             raise

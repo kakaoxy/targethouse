@@ -113,6 +113,45 @@ async def add_sold_houses(houses: List[Dict] = Body(...)):
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
+@app.post("/api/houses/on-sale")
+async def add_on_sale_houses(houses: List[Dict] = Body(...)):
+    """
+    添加在售房源记录
+    
+    Args:
+        houses: 在售房源记录列表，每个记录包含房源详细信息
+    
+    Returns:
+        包含操作结果的JSON响应
+    """
+    try:
+        logger.info(f"开始添加在售房源数据，记录数: {len(houses)}")
+        
+        # 添加时间戳
+        for house in houses:
+            house['数据创建时间'] = datetime.now()
+        
+        # 批量插入记录
+        result = db.save_on_sale_houses_batch(houses)
+        
+        # 获取插入的记录数
+        inserted_count = len(result.inserted_ids) if result else 0
+        logger.info(f"成功添加 {inserted_count} 条记录")
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": f"成功添加 {inserted_count} 条记录",
+                "inserted_count": inserted_count
+            }
+        )
+        
+    except Exception as e:
+        error_msg = f"添加在售房源数据时出错: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+
 # 挂载静态文件
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
