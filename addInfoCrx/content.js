@@ -224,4 +224,175 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // 保持消息通道开启
   }
+
+  // 添加在售房源爬取功能
+  if (request.action === 'crawlOnSale') {
+    console.log('开始爬取在售房源...');
+    console.log('当前页面URL:', window.location.href);
+
+    // 创建一个端口连接
+    const port = chrome.runtime.connect({name: "crawlProgress"});
+
+    const crawlOnSaleData = async () => {
+      try {
+        // 检查是否为在售房源列表页面
+        if (!window.location.href.includes('.ke.com/ershoufang/c')) {
+          throw new Error('当前页面不是链家在售房源列表页面');
+        }
+
+        // 获取所有房源链接
+        const houseLinks = document.querySelectorAll('#beike > div.sellListPage > div.content > div.leftContent > div:nth-child(4) > ul > li > div > div.title > a');
+        console.log('找到房源链接数量:', houseLinks.length);
+
+        // 发送总数信息
+        port.postMessage({
+          success: true,
+          type: 'progress',
+          progress: {
+            type: 'total',
+            total: houseLinks.length
+          }
+        });
+
+        const pageData = [];
+        
+        // 遍历每个房源链接
+        for (const [index, link] of Array.from(houseLinks).entries()) {
+          try {
+            // 发送进度信息
+            port.postMessage({
+              success: true,
+              type: 'progress',
+              progress: {
+                type: 'progress',
+                current: index + 1,
+                total: houseLinks.length,
+                message: `正在处理第 ${index + 1}/${houseLinks.length} 个房源...`
+              }
+            });
+
+            console.log(`开始处理第 ${index + 1}/${houseLinks.length} 个房源...`);
+            
+            // 打开新窗口获取详情
+            const response = await fetch(link.href);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const getTextContent = (selector, removeText = '') => {
+              const element = doc.querySelector(selector);
+              if (!element) return '';
+              let text = element.textContent.trim();
+              if (removeText) text = text.replace(removeText, '');
+              return text;
+            };
+
+            // 提取房源信息
+            const record = {
+              '小区名': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.communityName > a.info.no_resblock_a'),
+              '区域': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.areaName > span.info > a:nth-child(1)'),
+              '商圈': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.areaName > span.info > a:nth-child(2)'),
+              '户型': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.houseInfo > div.room > div.mainInfo'),
+              '面积': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.houseInfo > div.area > div.mainInfo')
+                     .replace(/[建筑面积㎡平米]/g, '').trim(),
+              '楼层': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.houseInfo > div.room > div.subInfo'),
+              '朝向': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.houseInfo > div.type > div.mainInfo'),
+              '梯户比': getTextContent('#introduction > div > div > div.base > div.content > ul > li:nth-child(11)', '梯户比例'),
+              '总价': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.price-container > div > span.total'),
+              '单价': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.price-container > div > div.text > div.unitPrice > span'),
+              '挂牌时间': getTextContent('#introduction > div > div > div.transaction > div.content > ul > li:nth-child(1)', '挂牌时间'),
+              '上次交易': getTextContent('#introduction > div > div > div.transaction > div.content > ul > li:nth-child(3)', '上次交易'),
+              '抵押信息': getTextContent('#introduction > div > div > div.transaction > div.content > ul > li:nth-child(7) > span:nth-child(2)'),
+              '户型图': doc.querySelector('#layout > div.layout > div.content > div.imgdiv > img')?.src || '',
+              '贝壳编号': getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.aroundInfo > div.houseRecord > span.info').replace(/[^\d]/g, ''),
+              '房源链接': link.href,
+              '城市': getTextContent('#beike > div.sellDetailPage > div:nth-child(4) > div.intro.clear > div > div > a:nth-child(1)').replace('房产', ''),
+              '数据创建时间': new Date().toLocaleString('zh-CN')
+            };
+
+            // 处理建筑年代和楼栋结构
+            const buildingInfo = getTextContent('#beike > div.sellDetailPage > div:nth-child(6) > div.overview > div.content > div.houseInfo > div.area > div.subInfo.noHidden');
+            if (buildingInfo) {
+              const yearMatch = buildingInfo.match(/(\d{4})年建/);
+              const typeMatch = buildingInfo.match(/[板塔]楼/);
+              
+              record['建筑年代'] = yearMatch ? yearMatch[1] : '';
+              record['楼栋结构'] = typeMatch ? typeMatch[0] : '';
+              
+              console.log(`解析建筑信息: ${buildingInfo} -> 年代: ${record['建筑年代']}, 结构: ${record['楼栋结构']}`);
+            }
+
+            // 获取小区ID
+            const communityId = window.location.href.match(/\/c(\d+)/)?.[1] || '';
+            record['小区ID'] = communityId;
+
+            // 获取房源ID
+            const houseId = link.href.match(/\/(\d+)\.html/)?.[1] || '';
+            record['房源ID'] = houseId;
+
+            console.log(`第 ${index + 1} 条记录:`, record);
+            pageData.push(record);
+
+            // 随机等待1-3秒
+            const waitTime = Math.floor(Math.random() * 2000) + 1000;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+
+          } catch (err) {
+            console.error(`处理第 ${index + 1} 个房源时出错:`, err);
+            port.postMessage({
+              success: true,
+              type: 'progress',
+              progress: {
+                type: 'error',
+                message: `处理第 ${index + 1} 个房源时出错: ${err.message}`
+              }
+            });
+          }
+        }
+
+        if (pageData.length === 0) {
+          throw new Error('未能成功提取任何记录数据');
+        }
+
+        console.log('所有记录处理完成，总数:', pageData.length);
+        
+        // 发送完成信息
+        port.postMessage({
+          success: true,
+          type: 'progress',
+          progress: {
+            type: 'complete',
+            total: pageData.length
+          }
+        });
+
+        // 发送最终数据
+        sendResponse({
+          success: true,
+          type: 'data',
+          data: pageData
+        });
+
+        // 关闭端口连接
+        port.disconnect();
+
+        return pageData;
+
+      } catch (error) {
+        port.postMessage({
+          success: false,
+          error: error.message
+        });
+        port.disconnect();
+        throw error;
+      }
+    };
+
+    // 执行爬取流程
+    crawlOnSaleData().catch(error => {
+      console.error('爬取流程失败:', error.message);
+    });
+
+    return true; // 保持消息通道开启
+  }
 }); 

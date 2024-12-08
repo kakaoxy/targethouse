@@ -1,4 +1,5 @@
 let crawledData = null;
+let currentType = 'sold'; // 当前爬取类型：sold或onSale
 
 function showPreview(data) {
   const previewArea = document.getElementById('previewArea');
@@ -36,42 +37,111 @@ function showPreview(data) {
   });
 }
 
+// 添加标签切换事件
+document.querySelectorAll('.tab-button').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+    currentType = button.dataset.type;
+  });
+});
+
+// 修改爬取按钮事件
 document.getElementById('crawlBtn').addEventListener('click', async () => {
   const statusDiv = document.getElementById('status');
   const btn = document.getElementById('crawlBtn');
+  let progressDiv = document.querySelector('.progress');
   
   try {
-    // 禁用按钮
     btn.disabled = true;
     statusDiv.textContent = '正在爬取数据，请稍候...';
     
-    // 获取当前标签页
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     
-    if (!tab.url.includes('.ke.com/chengjiao/c')) {
-      throw new Error('请在链家成交记录页面使用此功能');
+    // 创建或重置进度条
+    if (!progressDiv) {
+      progressDiv = document.createElement('div');
+      progressDiv.className = 'progress';
+      statusDiv.after(progressDiv);
     }
-    
-    // 向content script发送消息开始爬取
-    const response = await chrome.tabs.sendMessage(tab.id, {action: 'crawl'});
-    
-    if (response.success) {
-      if (response.data.length === 0) {
-        statusDiv.textContent = '未找到成交记录数据';
-        return;
+    progressDiv.style.display = 'none';
+    progressDiv.innerHTML = `
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <div class="progress-text"></div>
+    `;
+
+    // 创建端口连接监听
+    chrome.runtime.onConnect.addListener((port) => {
+      if (port.name === "crawlProgress") {
+        port.onMessage.addListener((response) => {
+          try {
+            if (!response.success) {
+              throw new Error(response.error || '爬取失败');
+            }
+
+            if (response.type === 'progress') {
+              const progress = response.progress;
+              switch (progress.type) {
+                case 'total':
+                  progressDiv.style.display = 'block';
+                  statusDiv.textContent = `共找到 ${progress.total} 个房源`;
+                  break;
+                case 'progress':
+                  progressDiv.style.display = 'block';
+                  const percent = (progress.current / progress.total * 100).toFixed(1);
+                  progressDiv.querySelector('.progress-fill').style.width = `${percent}%`;
+                  progressDiv.querySelector('.progress-text').textContent = progress.message;
+                  break;
+                case 'error':
+                  console.warn(progress.message);
+                  break;
+                case 'complete':
+                  progressDiv.style.display = 'none';
+                  statusDiv.textContent = `爬取完成，共获取 ${progress.total} 条记录`;
+                  break;
+              }
+            }
+          } catch (error) {
+            statusDiv.textContent = '错误：' + error.message;
+            console.error('消息处理错误:', error);
+            btn.disabled = false;
+            progressDiv.style.display = 'none';
+          }
+        });
       }
-      
-      statusDiv.textContent = `已找到 ${response.data.length} 条记录，请确认数据是否正确：`;
-      crawledData = response.data;
-      showPreview(response.data);
-    } else {
-      throw new Error(response.error || '爬取失败');
-    }
+    });
+
+    // 发送爬取命令
+    const action = tab.url.includes('.ke.com/chengjiao/c') ? 'crawl' : 'crawlOnSale';
+    chrome.tabs.sendMessage(tab.id, {action: action}, (response) => {
+      if (response && response.type === 'data') {
+        if (!response.data || response.data.length === 0) {
+          statusDiv.textContent = '未找到房源数据';
+          btn.disabled = false;
+          return;
+        }
+        
+        // 显示数据预览和保存按钮
+        statusDiv.textContent = `已找到 ${response.data.length} 条记录，请确认数据是否正确：`;
+        crawledData = response.data;
+        showPreview(response.data);
+        
+        // 显示确认和取消按钮
+        document.querySelector('.buttons').style.display = 'block';
+        
+        // 数据获取完成后启用按钮
+        btn.disabled = false;
+        
+        // 滚动到预览区域
+        document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+
   } catch (error) {
     statusDiv.textContent = '错误：' + error.message;
     console.error('操作错误:', error);
-  } finally {
-    // 重新启用按钮
     btn.disabled = false;
   }
 });
