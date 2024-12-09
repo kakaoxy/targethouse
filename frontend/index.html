@@ -27,7 +27,13 @@
                 <!-- 右侧搜索框 -->
                 <div class="col-md-8">
                     <div class="input-group mb-3">
-                        <input type="text" class="form-control" v-model="searchQuery" placeholder="输入小区名称搜索...">
+                        <select class="form-select" style="max-width: 100px;" v-model="selectedCity">
+                            <option value="上海">上海</option>
+                            <option value="北京">北京</option>
+                            <option value="广州">广州</option>
+                            <option value="深圳">深圳</option>
+                        </select>
+                        <input type="text" class="form-control" v-model="searchQuery" placeholder="输入小区名称搜索..." @keyup.enter="searchHouses">
                         <button class="btn btn-primary" @click="searchHouses">搜索</button>
                         <button class="btn btn-outline-primary ms-2" onclick="toggleCalculator()">
                             <i class="fas fa-calculator"></i> 投资测算

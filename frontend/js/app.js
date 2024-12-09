@@ -8,6 +8,7 @@ const app = createApp({
     data() {
         return {
             searchQuery: '',
+            selectedCity: '上海',
             selectedHouseType: '',
             selectedFloorLevel: '',
             onSaleHouses: [],
@@ -38,9 +39,22 @@ const app = createApp({
             // 应用排序
             if (this.onSaleSortField) {
                 houses = [...houses].sort((a, b) => {
-                    const aValue = parseFloat(a[this.onSaleSortField].replace(/[^\d.]/g, ''));
-                    const bValue = parseFloat(b[this.onSaleSortField].replace(/[^\d.]/g, ''));
-                    return this.onSaleSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+                    try {
+                        // 确保a[field]存在
+                        const aValue = a[this.onSaleSortField];
+                        const bValue = b[this.onSaleSortField];
+                        
+                        if (!aValue || !bValue) return 0;
+                        
+                        // 提取数字部分
+                        const aNum = parseFloat(aValue.toString().replace(/[^\d.]/g, '')) || 0;
+                        const bNum = parseFloat(bValue.toString().replace(/[^\d.]/g, '')) || 0;
+                        
+                        return this.onSaleSortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                    } catch (error) {
+                        console.error('排序出错:', error);
+                        return 0;
+                    }
                 });
             }
             
@@ -65,9 +79,22 @@ const app = createApp({
             // 应用排序
             if (this.soldSortField) {
                 houses = houses.sort((a, b) => {
-                    const aValue = parseFloat(a[this.soldSortField].replace(/[^\d.]/g, ''));
-                    const bValue = parseFloat(b[this.soldSortField].replace(/[^\d.]/g, ''));
-                    return this.soldSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+                    try {
+                        // 确保a[field]存在
+                        const aValue = a[this.soldSortField];
+                        const bValue = b[this.soldSortField];
+                        
+                        if (!aValue || !bValue) return 0;
+                        
+                        // 提取数字部分
+                        const aNum = parseFloat(aValue.toString().replace(/[^\d.]/g, '')) || 0;
+                        const bNum = parseFloat(bValue.toString().replace(/[^\d.]/g, '')) || 0;
+                        
+                        return this.soldSortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                    } catch (error) {
+                        console.error('排序出错:', error);
+                        return 0;
+                    }
                 });
             }
             
@@ -231,8 +258,14 @@ const app = createApp({
 
             this.loading = true;
             try {
-                // 获取在售房源数据
-                const onSaleResponse = await axios.get(`/api/houses/on-sale?community=${encodeURIComponent(this.searchQuery)}&limit=1000`);
+                // 获取在售房源数据，添加城市参数
+                const onSaleResponse = await axios.get(`/api/houses/on-sale`, {
+                    params: {
+                        community: this.searchQuery,
+                        city: this.selectedCity,
+                        limit: 1000
+                    }
+                });
                 let onSaleData = onSaleResponse.data.data || [];
                 
                 // 按贝壳编号去重，保留最新数据
@@ -251,7 +284,6 @@ const app = createApp({
                     if (beikeId) {
                         onSaleMap.set(beikeId, house);
                     } else {
-                        // 没有贝壳编号的情况，生成唯一标识
                         const uniqueId = `unique_${Date.now()}_${Math.random()}`;
                         onSaleMap.set(uniqueId, house);
                     }
@@ -260,8 +292,14 @@ const app = createApp({
                 // 转换回数组
                 this.onSaleHouses = Array.from(onSaleMap.values());
 
-                // 获取成交房源数据
-                const soldResponse = await axios.get(`/api/houses/sold?community=${encodeURIComponent(this.searchQuery)}&limit=1000`);
+                // 获取成交房源数据，添加城市参数
+                const soldResponse = await axios.get(`/api/houses/sold`, {
+                    params: {
+                        community: this.searchQuery,
+                        city: this.selectedCity,
+                        limit: 1000
+                    }
+                });
                 this.soldHouses = soldResponse.data.data || [];
 
                 // 应用筛选条件
