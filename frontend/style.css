@@ -2,19 +2,23 @@
     display: none;
 }
 
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: fit-content;
+}
+
 .header-logo {
-    height: 108px;
-    margin-right: 12px;
+    height: 96px;
+    margin-bottom: 8px;
     object-fit: contain;
 }
 
 .header-title {
-    color: #333;
+    color: #ff5757;
     font-size: 24px;
-    /* 加粗 */
-    font-weight: bold;
     margin: 0;
-    /* font-weight: 500; */
 }
 
 .search-bar {
@@ -482,11 +486,12 @@
 
 @media (max-width: 768px) {
     .header-logo {
-        height: 28px;
+        height: 36px;
+        margin-bottom: 6px;
     }
     
     .header-title {
-        font-size: 18px;
+        font-size: 20px;
     }
     
     .search-bar {
