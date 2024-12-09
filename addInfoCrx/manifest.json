@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "贝壳房源信息Crawler",
+  "name": "某壳房源信息Crawler",
   "version": "1.0",
   "description": "将当前页面信息并保存为Excel",
   "permissions": [

@@ -109,7 +109,7 @@ document.getElementById('crawlBtn').addEventListener('click', async () => {
     const isErshoufang = tab.url.includes('/ershoufang/');
     
     if (!isChengjiao && !isErshoufang) {
-      throw new Error('请在链家成交记录或在售房源页面使用此功能');
+      throw new Error('请在某壳成交记录或在售房源页面使用此功能');
     }
 
     const action = isChengjiao ? 'crawl' : 'crawlOnSale';

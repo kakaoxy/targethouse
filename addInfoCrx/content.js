@@ -21,7 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 检查是否为成交页面，只要URL包含chengjiao即可
         if (!window.location.href.match(/\.ke\.com\/.*chengjiao/)) {
           console.error('页面URL不符合要求');
-          throw new Error('请在链家成交记录页面使用此功能');
+          throw new Error('请在某壳成交记录页面使用此功能');
         }
 
         // 获取小区ID
@@ -324,7 +324,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         // 简化URL判断，只检查是否包含ershoufang
         if (!window.location.href.match(/\.ke\.com\/.*ershoufang/)) {
-          throw new Error('请在链家在售房源页面使用此功能');
+          throw new Error('请在某壳在售房源页面使用此功能');
         }
 
         // 获取小区ID
