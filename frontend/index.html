@@ -17,14 +17,15 @@
 <body>
     <div id="app" class="container-fluid py-4">
         <!-- 页面头部 -->
-        <div class="header">
-            <img src="static/logo.png" alt="美房宝logo">
-            <h1>美房宝</h1>
-        </div>
-        <!-- 搜索栏 -->
         <div class="search-bar">
-            <div class="row justify-content-center">
-                <div class="col-md-4">
+            <div class="row align-items-center">
+                <!-- 左侧Logo和标题 -->
+                <div class="col-md-4 d-flex align-items-center">
+                    <img src="static/logo.png" alt="美房宝logo" class="header-logo">
+                    <h1 class="header-title mb-0">美房宝</h1>
+                </div>
+                <!-- 右侧搜索框 -->
+                <div class="col-md-8">
                     <div class="input-group mb-3">
                         <input type="text" class="form-control" v-model="searchQuery" placeholder="输入小区名称搜索...">
                         <button class="btn btn-primary" @click="searchHouses">搜索</button>

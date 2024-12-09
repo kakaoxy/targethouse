@@ -132,22 +132,20 @@ const app = createApp({
                 return;
             }
 
-            // 打印当前选择的户型
+            // 打印当前选择的户型和楼层
             console.log('Selected house type:', this.selectedHouseType);
+            console.log('Selected floor level:', this.selectedFloorLevel);
 
+            // 在售房源过滤
             this.filteredOnSaleHouses = this.onSaleHouses.filter(house => {
                 let matchHouseType = true;
                 let matchFloorLevel = true;
 
                 if (this.selectedHouseType) {
                     const houseType = house.户型 || '';
-                    // 打印房源的户型信息
-                    console.log('House type:', houseType);
-
                     if (this.selectedHouseType === '其他') {
                         matchHouseType = !houseType.match(/^[一二三四1234][室房]/);
                     } else {
-                        // 根据选择的户型构建匹配规则
                         let pattern;
                         switch(this.selectedHouseType) {
                             case '一室':
@@ -166,8 +164,6 @@ const app = createApp({
                                 pattern = new RegExp(`^${this.selectedHouseType.replace(/[室房]/, '')}[室房]`);
                         }
                         matchHouseType = houseType.match(pattern);
-                        // 打印匹配结果
-                        console.log('Pattern:', pattern, 'Match result:', matchHouseType);
                     }
                 }
 
@@ -179,6 +175,7 @@ const app = createApp({
                 return matchHouseType && matchFloorLevel;
             });
 
+            // 成交房源过滤
             this.filteredSoldHouses = this.soldHouses.filter(house => {
                 let matchHouseType = true;
                 let matchFloorLevel = true;
@@ -188,7 +185,6 @@ const app = createApp({
                     if (this.selectedHouseType === '其他') {
                         matchHouseType = !houseType.match(/^[一二三四1234][室房]/);
                     } else {
-                        // 根据选择的户型构建匹配规则
                         let pattern;
                         switch(this.selectedHouseType) {
                             case '一室':
@@ -211,8 +207,9 @@ const app = createApp({
                 }
 
                 if (this.selectedFloorLevel) {
-                    const floorInfo = house.楼层信息 || '';
-                    matchFloorLevel = floorInfo.includes(this.selectedFloorLevel);
+                    // 直接使用楼层字段，因为成交房源的楼层已经是"低楼层"/"中楼层"/"高楼层"格式
+                    const floorInfo = house.楼层 || '';
+                    matchFloorLevel = floorInfo === this.selectedFloorLevel;
                 }
 
                 return matchHouseType && matchFloorLevel;
