@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, Body
+from fastapi import FastAPI, Query, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from typing import List, Optional, Dict
@@ -30,49 +30,88 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Length", "Content-Range"]
 )
+
+# 添加中间件来处理代理头信息
+@app.middleware("http")
+async def add_process_proxy_headers(request: Request, call_next):
+    # 记录请求信息
+    logger.debug(f"收到请求: {request.method} {request.url}")
+    logger.debug(f"请求头: {request.headers}")
+    
+    # 更安全的客户端地址处理
+    try:
+        forwarded_proto = request.headers.get("X-Forwarded-Proto")
+        if forwarded_proto:
+            request.scope["scheme"] = forwarded_proto
+            logger.debug(f"设置协议为: {forwarded_proto}")
+        
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            # 确保client元组有两个元素
+            request.scope["client"] = (real_ip, request.scope.get("client", ("0.0.0.0", 0))[1])
+            logger.debug(f"设置客户端IP为: {real_ip}")
+        elif "client" not in request.scope:
+            # 如果没有client信息，设置一个默认值
+            request.scope["client"] = ("0.0.0.0", 0)
+    except Exception as e:
+        logger.error(f"处理请求头时出错: {str(e)}")
+        # 确保有默认的client信息
+        request.scope["client"] = ("0.0.0.0", 0)
+    
+    response = await call_next(request)
+    return response
 
 db = Database()
 
 @app.get("/api/houses/on-sale")
 async def get_on_sale_houses(
+    request: Request,  # 添加request参数以获取请求信息
     community: Optional[str] = Query(None, description="小区名称"),
+    city: Optional[str] = Query(None, description="城市"),
     skip: int = Query(0, description="跳过的记录数"),
     limit: int = Query(10, description="返回的记录数")
 ):
     try:
-        logger.info(f"开始获取在售房源数据 - 小区: {community}, skip: {skip}, limit: {limit}")
+        logger.debug(f"处理在售房源请求: URL={request.url}, Headers={request.headers}")
         query = {}
         if community:
             query["小区名"] = community
-        logger.info(f"数据库查询条件: {query}")
+        if city:
+            query["城市"] = city
         houses = db.get_on_sale_houses(query, skip, limit)
         return {"data": houses}
     except Exception as e:
-        error_msg = f"获取在售房源数据时出错: {str(e)}\n{traceback.format_exc()}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
+        logger.error(f"获取在售房源数据时出错: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
 
 @app.get("/api/houses/sold")
 async def get_sold_houses(
     community: Optional[str] = Query(None, description="小区名称"),
+    city: Optional[str] = Query(None, description="城市"),
     skip: int = Query(0, description="跳过的记录数"),
     limit: int = Query(10, description="返回的记录数")
 ):
     try:
-        logger.info(f"开始获取成交房源数据 - 小区: {community}, skip: {skip}, limit: {limit}")
         query = {}
         if community:
             query["小区名"] = community
-        logger.info(f"数据库查询条件: {query}")
+        if city:
+            query["城市"] = city
         houses = db.get_sold_houses(query, skip, limit)
         return {"data": houses}
     except Exception as e:
-        error_msg = f"获取成交房源数据时出错: {str(e)}\n{traceback.format_exc()}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
+        logger.error(f"获取成交房源数据时出错: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
 
 @app.post("/api/houses/sold")
 async def add_sold_houses(houses: List[Dict] = Body(...)):

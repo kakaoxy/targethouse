@@ -1,7 +1,19 @@
 const { createApp } = Vue;
 const { ElMessage } = ElementPlus;
 
-const API_BASE_URL = 'http://101.126.149.86:5000';
+const API_BASE_URL = '/api';  // 直接使用相对路径，让浏览器自动匹配当前协议和域名
+
+// 修改axios请求配置
+const axiosConfig = {
+    baseURL: API_BASE_URL,
+    timeout: 10000,
+    headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+    }
+};
+
+// 创建axios实例
+const axiosInstance = axios.create(axiosConfig);
 
 // 创建Vue应用实例
 const app = createApp({
@@ -258,8 +270,8 @@ const app = createApp({
 
             this.loading = true;
             try {
-                // 获取在售房源数据，添加城市参数
-                const onSaleResponse = await axios.get(`/api/houses/on-sale`, {
+                // 获取在售房源数据
+                const onSaleResponse = await axios.get(`${API_BASE_URL}/houses/on-sale`, {
                     params: {
                         community: this.searchQuery,
                         city: this.selectedCity,
@@ -292,8 +304,8 @@ const app = createApp({
                 // 转换回数组
                 this.onSaleHouses = Array.from(onSaleMap.values());
 
-                // 获取成交房源数据，添加城市参数
-                const soldResponse = await axios.get(`/api/houses/sold`, {
+                // 获取成交房源数据
+                const soldResponse = await axios.get(`${API_BASE_URL}/houses/sold`, {
                     params: {
                         community: this.searchQuery,
                         city: this.selectedCity,

@@ -1,0 +1,98 @@
+server {
+    listen 443 ssl http2;
+    server_name hitoday.top www.hitoday.top 101.126.149.86;
+
+    ssl_certificate /etc/nginx/cert/hitoday.top.pem;
+    ssl_certificate_key /etc/nginx/cert/hitoday.top.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # 启用HSTS
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # 前端静态文件
+    location / {
+        root /var/www/targethouse/frontend;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+        
+        # 添加缓存控制
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    # 静态资源处理
+    location /static/ {
+        alias /var/www/targethouse/frontend/static/;
+        expires 7d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # favicon.ico 处理
+    location = /favicon.ico {
+        alias /var/www/targethouse/frontend/static/logo.ico;
+        access_log off;
+        log_not_found off;
+    }
+
+    # API 反向代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        
+        # 基本代理设置
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # 确保传递完整的客户端信息
+        proxy_set_header Connection "";
+        proxy_set_header X-Original-URI $request_uri;
+        
+        # 增加超时时间
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+
+        # 调试用的响应头
+        add_header X-Debug-Message "Proxied through Nginx" always;
+
+        # CORS配置
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' '*' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+
+        # OPTIONS请求处理
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' '*';
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+    }
+
+    # 错误页面
+    error_page 404 /error/404.html;
+    error_page 500 502 503 504 /error/50x.html;
+    location /error/ {
+        root /var/www/targethouse/frontend;
+        internal;
+    }
+}
+
+# HTTP重定向
+server {
+    listen 80;
+    server_name hitoday.top www.hitoday.top 101.126.149.86;
+    return 301 https://$host$request_uri;
+}
