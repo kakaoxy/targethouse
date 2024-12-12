@@ -1,29 +1,36 @@
-# Target House 房源数据系统
+# 美房宝 - 房源数据分析系统
 
-一个基于FastAPI和Vue.js的房源数据查询系统，支持在售房源和成交房源的查询、分析和可视化。
+## 项目简介
+美房宝是一个专业的房源数据分析系统，提供在售房源和成交房源的数据查询、分析和可视化功能。系统支持多城市房源数据的采集和展示，帮助用户更好地了解房地产市场动态。
 
 ## 功能特点
-
-- 在售房源查询和展示
-- 成交房源数据分析
-- 房源数据可视化（楼层分布、户型分布等）
-- 投资测算器
-- RESTful API接口
+- 在售房源数据查询和展示
+- 成交房源历史记录查询
+- 房源数据可视化分析
+- 多维度数据筛选（户型、楼层等）
+- 支持多城市数据
+- 投资测算工具
+- 响应式设计，支持移动端访问
 
 ## 技术栈
-
 ### 后端
-- Python 3.8+
+- Python 3.12
 - FastAPI
 - MongoDB
-- Gunicorn + Uvicorn
-- python-dotenv（环境变量管理）
+- Gunicorn
+- Uvicorn
 
 ### 前端
-- Vue.js
-- Element Plus UI
-- ECharts（数据可视化）
+- Vue.js 3
+- Element Plus
 - Bootstrap 5
+- ECharts
+- Axios
+
+### 部署
+- Nginx
+- SSL/HTTPS
+- Ubuntu Server
 
 ## 项目结构
 
