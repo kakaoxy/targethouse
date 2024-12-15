@@ -546,6 +546,9 @@
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid #eee;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .house-info-grid {
@@ -930,6 +933,9 @@
     border-radius: 8px;
     border: 1px solid #eee;
     background-color: #f8f9fa;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .house-info-grid {
@@ -1000,6 +1006,7 @@
 /* Safari特定样式 */
 @supports (-webkit-touch-callout: none) {
     .house-detail-image {
+        transform: translateZ(0);
         -webkit-transform: translateZ(0);
         backface-visibility: hidden;
     }
