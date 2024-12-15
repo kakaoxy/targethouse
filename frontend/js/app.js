@@ -15,6 +15,15 @@ const axiosConfig = {
 // 创建axios实例
 const axiosInstance = axios.create(axiosConfig);
 
+// 添加到 createApp 之前
+const vIntersection = {
+    mounted: (el, binding) => {
+        if (typeof binding.value === 'function') {
+            binding.value(el);
+        }
+    }
+};
+
 // 创建Vue应用实例
 const app = createApp({
     data() {
@@ -40,7 +49,14 @@ const app = createApp({
             onSaleSortField: '',
             onSaleSortOrder: 'asc',
             selectedType: '',
-            selectedFloor: ''
+            selectedFloor: '',
+            imageCache: new Map(),
+            loadedImages: new Set(),
+            imageLoadErrors: new Set(),
+            imageObserver: null,
+            observedImages: new Set(),
+            defaultHouseImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjkwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiNmNWY1ZjUiLz48cGF0aCBkPSJNNjAgMjBMODUgNjBIMzVMNjAgMjB6IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNjAiIHk9IjcwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM4ODgiPuaXoOaIv+WbvjwvdGV4dD48L3N2Zz4=',
+            placeholderImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjkwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiNmNWY1ZjUiLz48dGV4dCB4PSI2MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzg4OCI+5Yqg6L295LitLi4uPC90ZXh0Pjwvc3ZnPg=='
         }
     },
     computed: {
@@ -321,6 +337,12 @@ const app = createApp({
                 this.$nextTick(() => {
                     this.updateCharts();
                 });
+
+                // 在获取数据后预加载图片
+                this.$nextTick(() => {
+                    this.preloadImages(this.onSaleHouses);
+                    this.preloadImages(this.soldHouses);
+                });
             } catch (error) {
                 console.error('获取数据失败:', error);
                 if (error.response) {
@@ -501,13 +523,98 @@ const app = createApp({
                 this.soldSortField = field;
                 this.soldSortOrder = 'asc';
             }
+        },
+
+        handleImageError(event) {
+            const img = event.target;
+            img.src = this.defaultHouseImage;
+            if (this.imageObserver) {
+                this.imageObserver.unobserve(img);
+                this.observedImages.delete(img);
+            }
+        },
+
+        preloadImages(houses) {
+            if (!houses || houses.length === 0) return;
+            
+            const imagesToLoad = houses
+                .filter(house => house.户型图 && !this.loadedImages.has(house.户型图))
+                .map(house => house.户型图);
+
+            imagesToLoad.forEach(imageUrl => {
+                if (this.imageLoadErrors.has(imageUrl)) return;
+
+                const img = new Image();
+                img.referrerPolicy = 'no-referrer';
+                
+                img.onload = () => {
+                    this.loadedImages.add(imageUrl);
+                    this.imageCache.set(imageUrl, img);
+                };
+                
+                img.onerror = () => {
+                    this.imageLoadErrors.add(imageUrl);
+                };
+
+                img.src = imageUrl;
+            });
+        },
+
+        setupImageObserver() {
+            this.imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (!this.loadedImages.has(img.src)) {
+                            this.loadedImages.add(img.src);
+                            this.imageObserver.unobserve(img);
+                            this.observedImages.delete(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px 0px',
+                threshold: 0.1
+            });
+        },
+
+        observeImage(el) {
+            if (!this.imageObserver || this.observedImages.has(el)) return;
+            
+            this.imageObserver.observe(el);
+            this.observedImages.add(el);
+        },
+
+        openEvaluation(house) {
+            const params = new URLSearchParams({
+                id: house._id,
+                community: house.小区名
+            });
+            window.open(`evaluation.html?${params.toString()}`, '_blank');
         }
     },
     mounted() {
-        // 设置默认搜索小区
+        this.setupImageObserver();
         this.searchQuery = '新泾七村';
-        // 执行搜索
         this.searchHouses();
+    },
+    beforeUnmount() {
+        // 清理观察器
+        if (this.imageObserver) {
+            this.observedImages.forEach(img => {
+                this.imageObserver.unobserve(img);
+            });
+            this.imageObserver.disconnect();
+        }
+    },
+    watch: {
+        // 监听房源数据变化，触发预加载
+        displayOnSaleHouses(newHouses) {
+            this.preloadImages(newHouses);
+        },
+        displaySoldHouses(newHouses) {
+            this.preloadImages(newHouses);
+        }
     }
 });
 
@@ -517,5 +624,8 @@ for (const [key, component] of Object.entries(ElementPlus)) {
         app.component(key, component);
     }
 }
+
+// 注册自定义指令
+app.directive('intersection', vIntersection);
 
 app.mount('#app');

@@ -117,7 +117,20 @@
                     <div class="list-group list-group-flush">
                         <div v-for="(house, index) in displayOnSaleHouses" :key="house._id" class="list-group-item">
                             <div class="house-item">
-                                <!-- <img v-if="house.户型图" :src="house.户型图" :alt="house.户型" class="house-image"> -->
+                                <img v-if="house.户型图" 
+                                     :data-src="house.户型图" 
+                                     :src="house.户型图" 
+                                     :alt="house.户型" 
+                                     class="house-image" 
+                                     referrerpolicy="no-referrer"
+                                     @error="handleImageError"
+                                     v-intersection="observeImage"
+                                     @click="openEvaluation(house)"
+                                     style="cursor: pointer">
+                                <img v-else 
+                                     :src="defaultHouseImage" 
+                                     alt="暂无户型图" 
+                                     class="house-image">
                                 <div class="house-info">
                                     <h6 class="mb-1">
                                         <a :href="house.房源链接" target="_blank" class="text-decoration-none">{{ house.小区名 }}</a>
@@ -154,12 +167,28 @@
                     </div>
                     <div class="list-group list-group-flush">
                         <div v-for="(house, index) in displaySoldHouses" :key="house._id" class="list-group-item">
-                            <h6 class="mb-1">
-                                <a :href="house.房源链接" target="_blank" class="text-decoration-none">{{ house.小区名 }}</a>
-                            </h6>
-                            <div class="mb-1">{{ house.户型 }} | {{ house.面积 }}㎡ | {{ house.楼层 }}</div>
-                            <div class="price mb-1">总价：{{ house.总价 }}万 | {{ house.单价 }}元/㎡</div>
-                            <small class="text-muted">成交时间：{{ house.成交时间 }} | 挂牌{{ house.挂牌价 }}万 | 成交周期{{ house.成交周期 }}天</small>
+                            <div class="house-item">
+                                <img v-if="house.户型图" 
+                                     :data-src="house.户型图" 
+                                     :src="house.户型图" 
+                                     :alt="house.户型" 
+                                     class="house-image" 
+                                     referrerpolicy="no-referrer"
+                                     @error="handleImageError"
+                                     v-intersection="observeImage">
+                                <img v-else 
+                                     :src="defaultHouseImage" 
+                                     alt="暂无户型图" 
+                                     class="house-image">
+                                <div class="house-info">
+                                    <h6 class="mb-1">
+                                        <a :href="house.房源链接" target="_blank" class="text-decoration-none">{{ house.小区名 }}</a>
+                                    </h6>
+                                    <div class="mb-1">{{ house.户型 }} | {{ house.面积 }}㎡ | {{ house.楼层 }}</div>
+                                    <div class="price mb-1">总价：{{ house.总价 }}万 | {{ house.单价 }}元/㎡</div>
+                                    <small class="text-muted">成交时间：{{ house.成交时间 }} | 挂牌{{ house.挂牌价 }}万 | 成交周期{{ house.成交周期 }}天</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
