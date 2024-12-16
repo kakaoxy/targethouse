@@ -68,13 +68,11 @@ const app = createApp({
             if (this.onSaleSortField) {
                 houses = [...houses].sort((a, b) => {
                     try {
-                        // 确保a[field]存在
                         const aValue = a[this.onSaleSortField];
                         const bValue = b[this.onSaleSortField];
                         
                         if (!aValue || !bValue) return 0;
                         
-                        // 提取数字部分
                         const aNum = parseFloat(aValue.toString().replace(/[^\d.]/g, '')) || 0;
                         const bNum = parseFloat(bValue.toString().replace(/[^\d.]/g, '')) || 0;
                         
@@ -90,12 +88,11 @@ const app = createApp({
         },
         displaySoldHouses() {
             // 获取基础数据
-            let houses = this.filteredSoldHouses || this.soldHouses;
+            let houses = this.soldHouses;
             
             // 去重处理
             const uniqueMap = new Map();
             houses = houses.filter(house => {
-                // 创建唯一标识：小区名+成交时间+面积+总价
                 const key = `${house.小区名}-${house.成交时间}-${house.面积}-${house.总价}`;
                 if (!uniqueMap.has(key)) {
                     uniqueMap.set(key, true);
@@ -108,13 +105,11 @@ const app = createApp({
             if (this.soldSortField) {
                 houses = houses.sort((a, b) => {
                     try {
-                        // 确保a[field]存在
                         const aValue = a[this.soldSortField];
                         const bValue = b[this.soldSortField];
                         
                         if (!aValue || !bValue) return 0;
                         
-                        // 提取数字部分
                         const aNum = parseFloat(aValue.toString().replace(/[^\d.]/g, '')) || 0;
                         const bNum = parseFloat(bValue.toString().replace(/[^\d.]/g, '')) || 0;
                         
@@ -126,7 +121,12 @@ const app = createApp({
                 });
             }
             
-            return houses;
+            // 处理显示格式
+            return houses.map(house => ({
+                ...house,
+                // 统一楼层显示格式
+                楼层: house.总层数 ? `${house.楼层}/共${house.总层数}层` : house.楼层
+            }));
         },
         allSoldHouses() {
             return this.soldHouses;

@@ -119,29 +119,62 @@ class Database:
 
     def get_on_sale_houses(self, query: Dict = None, skip: int = 0, limit: int = 20) -> List[Dict]:
         """获取在售房源数据"""
-        if query is None:
-            query = {}
-        if '小区名' in query:
-            query['小区名'] = {'$regex': query['小区名'], '$options': 'i'}
-        
-        projection = {
-            '户型图': 1,
-            '小区名': 1,
-            '户型': 1,
-            '面积': 1,
-            '总价': 1,
-            '单价': 1,
-            '楼层': 1,
-            '建筑类型': 1,
-            '挂牌时间': 1,
-            '贝壳编号': 1,
-            '房源链接': 1,
-            '数据创建时间': 1,
-            '_id': 1
-        }
-        
-        houses = self.collection_on_sale.find(query, projection).skip(skip).limit(limit)
-        return [{**house, '_id': str(house['_id'])} for house in houses]
+        try:
+            if query is None:
+                query = {}
+            if '小区名' in query:
+                query['小区名'] = {'$regex': query['小区名'], '$options': 'i'}
+            
+            # 定义要返回的所有字段
+            projection = {
+                '_id': 1,
+                '小区ID': 1,
+                '房源ID': 1,
+                '小区名': 1,
+                '区域': 1,
+                '商圈': 1,
+                '户型': 1,
+                '面积': 1,
+                '楼层': 1,
+                '朝向': 1,
+                '梯户比': 1,
+                '总价': 1,
+                '单价': 1,
+                '挂牌时间': 1,
+                '上次交易': 1,
+                '抵押信息': 1,
+                '户型图': 1,
+                '贝壳编号': 1,
+                '房源链接': 1,
+                '城市': 1,
+                '建筑年代': 1,
+                '楼栋结构': 1,
+                '数据创建时间': 1
+            }
+            
+            # 查询数据库
+            houses = self.collection_on_sale.find(query, projection).skip(skip).limit(limit)
+            
+            # 处理返回结果
+            result = []
+            for house in houses:
+                # 转换ObjectId为字符串
+                house['_id'] = str(house['_id'])
+                # 转换日期类型
+                if '数据创建时间' in house and isinstance(house['数据创建时间'], datetime):
+                    house['数据创建时间'] = house['数据创建时间'].isoformat()
+                result.append(house)
+            
+            # 记录调试信息
+            if result:
+                logger.debug(f"Sample house data: {result[0]}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"获取在售房源数据时出错: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
 
     def get_sold_houses(self, query: Dict = None, skip: int = 0, limit: int = 20) -> List[Dict]:
         """获取成交房源数据"""
@@ -150,15 +183,15 @@ class Database:
             if query is None:
                 query = {}
             if '小区名' in query:
-                query['小区名'] = query['小区名']
-            if '城市' in query:  # 添加城市查询支持
+                query['小区名'] = {'$regex': query['小区名'], '$options': 'i'}  # 添加模糊匹配
+            if '城市' in query:
                 query['城市'] = query['城市']
             
             logger.info(f"查询条件: {query}")
             
-            # 更新字段列表，与爬虫数据保持一致
+            # 定义要返回的所有字段
             projection = {
-                '_id': 0,
+                '_id': 1,
                 '小区ID': 1,
                 '房源ID': 1,
                 '小区名': 1,
@@ -179,13 +212,29 @@ class Database:
                 '成交周期': 1,
                 '房源链接': 1,
                 '户型图': 1,
-                '城市': 1,  # 添加城市字段
+                '城市': 1,
                 '数据创建时间': 1
             }
             
-            houses = list(self.collection_sold.find(query, projection).skip(skip).limit(limit))
-            logger.info(f"查询到 {len(houses)} 条记录")
-            return houses
+            # 查询数据库
+            houses = self.collection_sold.find(query, projection).skip(skip).limit(limit)
+            
+            # 处理返回结果
+            result = []
+            for house in houses:
+                # 转换ObjectId为字符串
+                house['_id'] = str(house['_id'])
+                # 转换日期类型
+                if '数据创建时间' in house and isinstance(house['数据创建时间'], datetime):
+                    house['数据创建时间'] = house['数据创建时间'].isoformat()
+                result.append(house)
+            
+            # 记录调试信息
+            if result:
+                logger.debug(f"Sample sold house data: {result[0]}")
+            logger.info(f"查询到 {len(result)} 条成交记录")
+            
+            return result
             
         except Exception as e:
             logger.error(f"获取成交房源数据失败: {str(e)}")

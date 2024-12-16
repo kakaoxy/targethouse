@@ -41,17 +41,27 @@
                                         <span class="value">{{ house.小区名 }}</span>
                                     </div>
                                     <div class="info-item">
+                                        <span class="label">区域/商圈</span>
+                                        <span class="value">{{ house.区域 }}/{{ house.商圈 }}</span>
+                                    </div>
+                                    <div class="info-item">
                                         <span class="label">户型</span>
                                         <span class="value">{{ house.户型 }}</span>
+                                    </div>
+                                    
+                                    <div class="info-item">
+                                        <span class="label">面积</span>
+                                        <span class="value">{{ house.面积 }}㎡</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="label">朝向</span>
+                                        <span class="value">{{ house.朝向 }}</span>
                                     </div>
                                     <div class="info-item">
                                         <span class="label">楼层</span>
                                         <span class="value">{{ house.楼层 }}</span>
                                     </div>
-                                    <div class="info-item">
-                                        <span class="label">面积</span>
-                                        <span class="value">{{ house.面积 }}㎡</span>
-                                    </div>
+                                    
                                     <div class="info-item">
                                         <span class="label">单价</span>
                                         <span class="value highlight">{{ house.单价 }}元/㎡</span>
@@ -59,6 +69,23 @@
                                     <div class="info-item">
                                         <span class="label">总价</span>
                                         <span class="value highlight">{{ house.总价 }}万</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="label">建筑年代</span>
+                                        <span class="value">{{ house.建筑年代 }}年</span>
+                                    </div>
+                                    
+                                    <div class="info-item">
+                                        <span class="label">挂牌时间</span>
+                                        <span class="value">{{ house.挂牌时间 }}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="label">上次交易</span>
+                                        <span class="value">{{ house.上次交易 }}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="label">抵押信息</span>
+                                        <span class="value">{{ house.抵押信息 || '暂无' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -200,7 +227,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center gap-2">
                             <h5 class="card-title mb-0">成交房源列表</h5>
-                            <small class="text-muted">(最近30套)</small>
+                            <small class="text-muted">(最近60套)</small>
                         </div>
                         <span class="text-muted">共 {{ soldHouses.length }} 套</span>
                     </div>

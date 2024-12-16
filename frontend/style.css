@@ -552,33 +552,55 @@
 }
 
 .house-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
     flex: 1;
+    min-width: 280px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
 }
 
 .info-item {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
 }
 
 .info-item .label {
     color: #666;
-    font-size: 14px;
-    min-width: 60px;
+    font-size: 13px;
 }
 
 .info-item .value {
-    font-size: 14px;
     color: #333;
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .info-item .value.highlight {
     color: #ff5757;
-    font-weight: bold;
-    font-size: 16px;
+    font-weight: 600;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .house-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .info-item {
+        padding: 6px;
+    }
+    
+    .info-item .label {
+        font-size: 12px;
+    }
+    
+    .info-item .value {
+        font-size: 13px;
+    }
 }
 
 .community-stats {

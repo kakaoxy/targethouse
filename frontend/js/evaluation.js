@@ -45,14 +45,16 @@ const app = createApp({
         },
         
         sortedSoldHouses() {
-            // 按成交时间降序排列，只显示最近30套
             return [...this.soldHouses]
-                .sort((a, b) => {
-                    const dateA = new Date(a.成交时间 || 0);
-                    const dateB = new Date(b.成交时间 || 0);
-                    return dateB - dateA;
-                })
-                .slice(0, 30); // 改为只取前30套
+                // 按成交时间降序排序
+                .sort((a, b) => new Date(b.成交时间) - new Date(a.成交时间))
+                // 只取前60条记录
+                .slice(0, 60)
+                // 处理楼层显示格式
+                .map(house => ({
+                    ...house,
+                    楼层: house.总层数 ? `${house.楼层}/共${house.总层数}层` : house.楼层
+                }));
         }
     },
     methods: {
@@ -73,6 +75,7 @@ const app = createApp({
                         limit: 1000
                     }
                 });
+                console.log('在售房源数据:', onSaleResponse.data.data);
                 this.onSaleHouses = onSaleResponse.data.data || [];
 
                 // 获取成交房源数据
@@ -82,45 +85,83 @@ const app = createApp({
                         limit: 1000
                     }
                 });
+                console.log('成交房源数据:', soldResponse.data.data);
                 this.soldHouses = soldResponse.data.data || [];
 
                 // 如果有具体房源ID，获取该房源信息
                 if (houseId) {
                     const house = this.onSaleHouses.find(h => h._id === houseId);
+                    console.log('查找MongoDB ID:', houseId);
+                    console.log('原始房源数据:', JSON.stringify(house, null, 2)); // 添加详细的数据日志
+                    
                     if (house) {
                         // 处理户型图URL
                         let floorPlanImage = house.户型图;
                         if (floorPlanImage) {
-                            // 移除URL中的参数，避免缓存问题
                             floorPlanImage = floorPlanImage.split('?')[0];
-                            // 修改图片尺寸参数
-                            floorPlanImage = floorPlanImage.replace(/\.\d+x\d+\.jpg$/, '.jpg');
                         }
 
-                        this.house = {
-                            ...house,
-                            户型图: floorPlanImage,
-                            区域: house.区域?.trim() || '',
-                            商圈: house.商圈?.trim() || ''
-                        };
-                        
-                        // 如果区域或商圈为空，尝试从房源链接解析
-                        if (!this.house.区域 || !this.house.商圈) {
-                            const link = house.房源链接 || '';
-                            const matches = link.match(/\/(\w+)\/(\w+)\//);
-                            if (matches) {
-                                this.house.区域 = this.house.区域 || matches[1];
-                                this.house.商圈 = this.house.商圈 || matches[2];
-                            }
+                        // 处理建筑年代
+                        let buildingYear = '';
+                        if (house.建筑年代 !== undefined && house.建筑年代 !== null) {
+                            buildingYear = typeof house.建筑年代 === 'number' 
+                                ? house.建筑年代.toString() 
+                                : house.建筑年代.toString().replace(/[年建]/g, '').trim();
                         }
+
+                        // 处理朝向
+                        let orientation = house.朝向;
+                        if (orientation) {
+                            orientation = orientation.toString().replace(/\n/g, '').trim();
+                        }
+
+                        // 处理梯户比
+                        let elevatorRatio = house.梯户比;
+                        if (elevatorRatio) {
+                            elevatorRatio = elevatorRatio.toString().replace(/\n/g, '').trim();
+                        }
+
+                        // 处理区域和商圈
+                        const district = house.区域?.toString().trim();
+                        const area = house.商圈?.toString().trim();
+
+                        // 处理上次交易和抵押信息
+                        const lastDeal = house.上次交易?.toString().trim();
+                        const mortgage = house.抵押信息?.toString().trim();
+
+                        this.house = {
+                            ...house,  // 保留原始数据
+                            户型图: floorPlanImage,
+                            区域: district || '暂无',
+                            商圈: area || '暂无',
+                            朝向: orientation || '暂无',
+                            建筑年代: buildingYear || '暂无',
+                            上次交易: lastDeal || '暂无记录',
+                            抵押信息: mortgage || '暂无',
+                            梯户比: elevatorRatio || '暂无'
+                        };
+
+                        // 打印处理前后的对比
+                        console.log('原始数据中的关键字段:', {
+                            区域: house.区域,
+                            商圈: house.商圈,
+                            朝向: house.朝向,
+                            建筑年代: house.建筑年代,
+                            上次交易: house.上次交易,
+                            抵押信息: house.抵押信息
+                        });
+                        
+                        console.log('处理后的数据:', this.house);
+                    } else {
+                        console.error('未找到对应房源，MongoDB ID:', houseId);
                     }
                 }
 
                 // 计算小区统计信息
-                this.calculateCommunityStats();
+                await this.calculateCommunityStats();
                 
                 // 计算历史高点
-                this.calculateHistoryHighs();
+                await this.calculateHistoryHighs();
 
                 // 使用nextTick确保DOM更新后再绘制图表
                 this.$nextTick(() => {
@@ -237,26 +278,33 @@ const app = createApp({
         },
 
         drawPriceChart() {
-            const canvas = document.getElementById('priceChart');
-            if (!canvas) return;
+            if (!this.soldHouses.length) return;
 
-            // 按时间排序
-            const sortedRecords = [...this.soldHouses].sort((a, b) => 
-                new Date(a.成交时间) - new Date(b.成交时间)
-            );
+            // 过滤掉非标准户型的房源
+            const validHouses = this.soldHouses.filter(house => {
+                const houseType = house.户型?.trim() || '';
+                return /^[一二三四五1234567]室/.test(houseType);
+            });
 
-            const data = {
-                labels: sortedRecords.map(r => r.成交时间),
+            // 按成交时间排序
+            const sortedHouses = validHouses.sort((a, b) => {
+                return new Date(a.成交时间) - new Date(b.成交时间);
+            });
+
+            const chartData = {
+                labels: sortedHouses.map(h => h.成交时间),
                 datasets: [{
                     label: '成交单价',
-                    data: sortedRecords.map(r => parseFloat(r.单价)),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1,
-                    fill: false,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    data: sortedHouses.map(h => h.单价),
+                    borderColor: '#ff5757',
+                    backgroundColor: 'rgba(255, 87, 87, 0.1)',
+                    fill: true,
+                    tension: 0.4
                 }]
             };
+
+            const canvas = document.getElementById('priceChart');
+            if (!canvas) return;
 
             if (this.priceChart) {
                 this.priceChart.destroy();
@@ -264,33 +312,22 @@ const app = createApp({
 
             this.priceChart = new Chart(canvas, {
                 type: 'line',
-                data: data,
+                data: chartData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '成交单价趋势'
+                        }
+                    },
                     scales: {
                         y: {
                             beginAtZero: false,
                             title: {
                                 display: true,
-                                text: '单价（元/㎡）'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: '成交时间'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return `单价: ${context.parsed.y.toLocaleString()}元/㎡`;
-                                }
+                                text: '单价(元/㎡)'
                             }
                         }
                     }
