@@ -87,8 +87,8 @@ const app = createApp({
             return houses;
         },
         displaySoldHouses() {
-            // 获取基础数据
-            let houses = this.soldHouses;
+            // 获取基础数据 - 使用 filteredSoldHouses 替代 soldHouses
+            let houses = this.filteredSoldHouses || this.soldHouses;
             
             // 去重处理
             const uniqueMap = new Map();
@@ -230,7 +230,7 @@ const app = createApp({
                 return matchHouseType && matchFloorLevel;
             });
 
-            // 成交房源过滤
+            // 成交房源过滤 - 修改这部分以匹配成交房源的数据结构
             this.filteredSoldHouses = this.soldHouses.filter(house => {
                 let matchHouseType = true;
                 let matchFloorLevel = true;
@@ -262,8 +262,9 @@ const app = createApp({
                 }
 
                 if (this.selectedFloorLevel) {
-                    // 直接使用楼层字段，因为成交房源的楼层已经是"低楼层"/"中楼层"/"高楼层"格式
+                    // 处理成交房源的楼层信息
                     const floorInfo = house.楼层 || '';
+                    // 确保匹配完整的楼层描述（如"低楼层"而不是仅匹配"低"）
                     matchFloorLevel = floorInfo === this.selectedFloorLevel;
                 }
 

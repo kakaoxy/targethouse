@@ -734,7 +734,7 @@
 /* 调整表格内容的对齐方式 */
 .table td:nth-child(2),
 .table td:nth-child(3) {
-    text-align: right;
+    text-align: left;
 }
 
 /* 优化房源信息网格布局 */
@@ -756,11 +756,11 @@
 /* 历史成交记录表格的特定列对齐方式 */
 .table.history-table td:nth-child(2), /* 成交套数 */
 .table.history-table td:nth-child(3) { /* 最高成交单价 */
-    text-align: right;
+    text-align: left;
 }
 
 .table.history-table td:nth-child(4) { /* 成交时间 */
-    text-align: center;
+    text-align: left;
 }
 
 /* 链接按钮样式 */
@@ -816,12 +816,13 @@
     font-size: 14px;
 }
 
-/* 在售和成交房源列表的列宽设置 */
+/* 修改表格列宽设置 */
 .table:not(.history-table) {
     /* 户型列 */
     & th:nth-child(1),
     & td:nth-child(1) {
-        width: 12%;  /* 减小户型列宽度 */
+        width: 12%;
+        min-width: 80px;
         text-align: left;
     }
 
@@ -829,35 +830,63 @@
     & th:nth-child(2),
     & td:nth-child(2) {
         width: 12%;
-        text-align: right;
+        min-width: 80px;
+        text-align: left;
     }
 
     /* 单价列 */
     & th:nth-child(3),
     & td:nth-child(3) {
-        width: 20%;  /* 增加单价列宽度，因为数字较长 */
-        text-align: right;
+        width: 18%;
+        min-width: 100px;
+        text-align: left;
     }
 
     /* 总价列 */
     & th:nth-child(4),
     & td:nth-child(4) {
         width: 12%;
-        text-align: right;
+        min-width: 80px;
+        text-align: left;
     }
 
     /* 楼层列 */
     & th:nth-child(5),
     & td:nth-child(5) {
-        width: 14%;
-        text-align: center;
+        width: 22%;
+        min-width: 140px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    /* 最后一列（操作或成交时间） */
+    /* 操作列 */
     & th:nth-child(6),
     & td:nth-child(6) {
-        width: 30%;  /* 增加最后一列宽度，保证日期显示完整 */
-        text-align: center;
+        width: 24%;
+        min-width: 100px;
+        text-align: left;
+    }
+}
+
+/* 成交房源表格特殊列宽设置 */
+.card:has(+ .card) .table th:nth-child(5),
+.card:has(+ .card) .table td:nth-child(5) {
+    width: 20%;  /* 楼层列宽度 */
+    min-width: 140px;  /* 确保有足够空间显示完整楼层信息 */
+}
+
+/* 移动端特殊处理 */
+@media (max-width: 768px) {
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        min-width: 120px;  /* 移动端稍微减小最小宽度 */
+    }
+    
+    .card:has(+ .card) .table th:nth-child(5),
+    .card:has(+ .card) .table td:nth-child(5) {
+        min-width: 120px;
     }
 }
 
@@ -879,21 +908,21 @@
     & th:nth-child(2),
     & td:nth-child(2) {
         width: 20%;
-        text-align: right;
+        text-align: left;
     }
 
     /* 最高成交单价列 */
     & th:nth-child(3),
     & td:nth-child(3) {
         width: 30%;  /* 增加单价列宽度 */
-        text-align: right;
+        text-align: left;
     }
 
     /* 成交时间列 */
     & th:nth-child(4),
     & td:nth-child(4) {
         width: 35%;
-        text-align: center;
+        text-align: left;
     }
 }
 
@@ -917,15 +946,15 @@
     /* 单位文字缩写优化 */
     .table td {
         &:nth-child(2) { 
-            &::after { content: "㎡"; font-size: 11px; padding-left: 1px; }
+            &::after {  font-size: 11px; padding-left: 1px; }
             & span:last-child { display: none; }
         }
         &:nth-child(3) { 
-            &::after { content: "元"; font-size: 11px; padding-left: 1px; }
+            &::after {  font-size: 11px; padding-left: 1px; }
             & span:last-child { display: none; }
         }
         &:nth-child(4) { 
-            &::after { content: "万"; font-size: 11px; padding-left: 1px; }
+            &::after {  font-size: 11px; padding-left: 1px; }
             & span:last-child { display: none; }
         }
     }
@@ -1038,4 +1067,409 @@
         display: flex;
         width: 100%;
     }
+}
+
+/* 移动端表格样式优化 */
+@media (max-width: 768px) {
+    .table-responsive {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .table {
+        font-size: 12px;
+    }
+
+    .table th,
+    .table td {
+        padding: 8px 4px;
+        white-space: nowrap;
+        min-width: auto;
+    }
+
+    /* 更新列宽设置 */
+    .table th:nth-child(1),
+    .table td:nth-child(1) {
+        min-width: 60px;  /* 户型 */
+    }
+
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        min-width: 65px;  /* 面积 */
+    }
+
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        min-width: 85px;  /* 单价 */
+    }
+
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        min-width: 65px;  /* 总价 */
+    }
+
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        min-width: 110px;  /* 楼层 */
+    }
+
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        min-width: 80px;  /* 成交时间 */
+    }
+
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        min-width: 80px;  /* 操作按钮 */
+    }
+
+    /* 优化按钮样式 */
+    .btn-sm {
+        padding: 2px 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        min-width: 70px;  /* 确保按钮文字完整显示 */
+    }
+
+    /* 优化表格滚动体验 */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        scrollbar-width: thin;
+        overflow-x: auto;
+    }
+
+    /* 自定义滚动条样式 */
+    .table-responsive::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 2px;
+    }
+
+    /* 确保表格内容不会被压缩 */
+    .table {
+        width: auto;
+        min-width: 100%;
+    }
+}
+
+/* 通用表格样式（适用于所有屏幕尺寸） */
+.table-responsive {
+    margin: 0;
+    padding: 0;
+    border: none;
+    overflow-x: auto;
+}
+
+.table th,
+.table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* 设置列宽 */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+    min-width: 70px;  /* 户型 */
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    min-width: 75px;  /* 面积 */
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    min-width: 95px;  /* 单价 */
+}
+
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    min-width: 75px;  /* 总价 */
+}
+
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    min-width: 120px;  /* 楼层 */
+}
+
+.table th:nth-child(6),
+.table td:nth-child(6) {
+    min-width: 90px;  /* 成交时间 */
+}
+
+.table th:nth-child(7),
+.table td:nth-child(7) {
+    min-width: 90px;  /* 操作按钮 */
+}
+
+/* 按钮样式 */
+.table .btn-sm {
+    padding: 4px 8px;
+    white-space: nowrap;
+    min-width: 80px;
+}
+
+/* 表格滚动条样式 */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+/* 移动端特殊样式覆盖 */
+@media (max-width: 768px) {
+    .table {
+        font-size: 12px;
+    }
+
+    .table th,
+    .table td {
+        padding: 8px 4px;
+    }
+
+    /* 移动端特定的列宽 */
+    .table th:nth-child(1),
+    .table td:nth-child(1) {
+        min-width: 60px;
+    }
+
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        min-width: 65px;
+    }
+
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        min-width: 85px;
+    }
+
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        min-width: 65px;
+    }
+
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        min-width: 110px;
+    }
+
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        min-width: 80px;
+    }
+
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        min-width: 80px;
+    }
+
+    /* 移动端按钮样式 */
+    .table .btn-sm {
+        padding: 2px 5px;
+        font-size: 12px;
+        min-width: 70px;
+    }
+
+    /* 移动端滚动条样式 */
+    .table-responsive::-webkit-scrollbar {
+        height: 4px;
+    }
+}
+
+/* 通用表格样式（适用于所有屏幕尺寸） */
+/* ... 其他样式保持不变 ... */
+
+/* 成交房源表格特殊列宽设置 */
+.card:has(+ .card) .table th:nth-child(1),  /* 第二个卡片（成交房源）的表格 */
+.card:has(+ .card) .table td:nth-child(1) {
+    min-width: 65px;  /* 户型 - 稍微压缩 */
+}
+
+.card:has(+ .card) .table th:nth-child(2),
+.card:has(+ .card) .table td:nth-child(2) {
+    min-width: 70px;  /* 面积 - 稍微压缩 */
+}
+
+.card:has(+ .card) .table th:nth-child(3),
+.card:has(+ .card) .table td:nth-child(3) {
+    min-width: 90px;  /* 单价 */
+}
+
+.card:has(+ .card) .table th:nth-child(4),
+.card:has(+ .card) .table td:nth-child(4) {
+    min-width: 70px;  /* 总价 */
+}
+
+.card:has(+ .card) .table th:nth-child(5),
+.card:has(+ .card) .table td:nth-child(5) {
+    min-width: 100px;  /* 楼层 */
+}
+
+.card:has(+ .card) .table th:nth-child(6),
+.card:has(+ .card) .table td:nth-child(6) {
+    min-width: 85px;  /* 成交时间 */
+}
+
+.card:has(+ .card) .table th:nth-child(7),
+.card:has(+ .card) .table td:nth-child(7) {
+    min-width: 85px;  /* 操作按钮 */
+}
+
+/* 移动端特殊样式覆盖 */
+@media (max-width: 768px) {
+    /* ... 其他移动端样式保持不变 ... */
+
+    /* 成交房源表格移动端特殊列宽 */
+    .card:has(+ .card) .table th:nth-child(1),
+    .card:has(+ .card) .table td:nth-child(1) {
+        min-width: 55px;  /* 户型 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(2),
+    .card:has(+ .card) .table td:nth-child(2) {
+        min-width: 60px;  /* 面积 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(3),
+    .card:has(+ .card) .table td:nth-child(3) {
+        min-width: 80px;  /* 单价 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(4),
+    .card:has(+ .card) .table td:nth-child(4) {
+        min-width: 60px;  /* 总价 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(5),
+    .card:has(+ .card) .table td:nth-child(5) {
+        min-width: 90px;  /* 楼层 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(6),
+    .card:has(+ .card) .table td:nth-child(6) {
+        min-width: 75px;  /* 成交时间 */
+    }
+
+    .card:has(+ .card) .table th:nth-child(7),
+    .card:has(+ .card) .table td:nth-child(7) {
+        min-width: 75px;  /* 操作按钮 */
+    }
+}
+
+/* 挂牌房源分布表格样式 */
+.table th,
+.table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+}
+
+/* 设置列宽 */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+    min-width: 80px;  /* 户型 */
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    min-width: 90px;  /* 挂牌套数 */
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    min-width: 120px;  /* 最低挂牌单价 */
+}
+
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    min-width: 140px;  /* 最低单价上架时间 */
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .table th,
+    .table td {
+        padding: 0.5rem;
+        font-size: 12px;
+    }
+}
+
+/* 统计信息区表格样式 */
+.card-body .table {
+    margin-bottom: 0;
+}
+
+.card-body .table th,
+.card-body .table td {
+    padding: 0.75rem 1rem;
+    font-size: 14px;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.card-body .table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.card-body .table td {
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* 确保两个表格列宽一致 */
+.card-body .table th:nth-child(1),
+.card-body .table td:nth-child(1) {
+    width: 15%;  /* 户型 */
+}
+
+.card-body .table th:nth-child(2),
+.card-body .table td:nth-child(2) {
+    width: 20%;  /* 套数 */
+}
+
+.card-body .table th:nth-child(3),
+.card-body .table td:nth-child(3) {
+    width: 35%;  /* 单价 */
+}
+
+.card-body .table th:nth-child(4),
+.card-body .table td:nth-child(4) {
+    width: 30%;  /* 时间 */
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .card-body .table th,
+    .card-body .table td {
+        padding: 0.5rem;
+        font-size: 12px;
+    }
+}
+
+/* 表格表头统一左对齐 */
+.table th {
+    text-align: left !important;
+}
+
+/* 操作列的按钮保持居中 */
+.table td:last-child .btn {
+    margin: 0 auto;
+    display: block;
+    width: fit-content;
 }

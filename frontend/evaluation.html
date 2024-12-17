@@ -141,9 +141,41 @@
             </div>
         </div>
 
-        <!-- 历史成交记录 -->
+        <!-- 2. 统计信息区 -->
         <div class="row mb-4">
-            <div class="col-12">
+            <!-- 在售房源分布 -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">在售房源分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="text-nowrap">户型</th>
+                                        <th class="text-nowrap">在售套数</th>
+                                        <th class="text-nowrap">最低挂牌单价</th>
+                                        <th class="text-nowrap">最低单价上架时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="record in onSaleDistribution" :key="record.户型">
+                                        <td class="text-nowrap">{{ record.户型 }}</td>
+                                        <td class="text-nowrap">{{ record.在售套数 }}套</td>
+                                        <td class="text-nowrap">{{ record.最低挂牌单价 }}元/㎡</td>
+                                        <td class="text-nowrap">{{ record.最低单价上架时间 }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 历史成交记录 -->
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">历史成交记录</h5>
@@ -153,18 +185,18 @@
                             <table class="table table-hover history-table">
                                 <thead>
                                     <tr>
-                                        <th>户型</th>
-                                        <th>成交套数</th>
-                                        <th>最高成交单价</th>
-                                        <th>最高单价成交时间</th>
+                                        <th class="text-nowrap">户型</th>
+                                        <th class="text-nowrap">成交套数</th>
+                                        <th class="text-nowrap">最高成交单价</th>
+                                        <th class="text-nowrap">最高单价成交时间</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="record in historyHighs" :key="record.户型">
-                                        <td>{{ record.户型 }}</td>
-                                        <td>{{ record.成交套数 }}套</td>
-                                        <td>{{ record.最高单价 }}元/㎡</td>
-                                        <td>{{ record.成交时间 }}</td>
+                                        <td class="text-nowrap">{{ record.户型 }}</td>
+                                        <td class="text-nowrap">{{ record.成交套数 }}套</td>
+                                        <td class="text-nowrap">{{ record.最高单价 }}元/㎡</td>
+                                        <td class="text-nowrap">{{ record.成交时间 }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -188,24 +220,24 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>户型</th>
-                                        <th>面积</th>
-                                        <th>单价</th>
-                                        <th>总价</th>
-                                        <th>楼层</th>
-                                        <th>操作</th>
+                                        <th class="text-nowrap">户型</th>
+                                        <th class="text-nowrap">面积</th>
+                                        <th class="text-nowrap">单价</th>
+                                        <th class="text-nowrap">总价</th>
+                                        <th class="text-nowrap">楼层</th>
+                                        <th class="text-nowrap">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="house in sortedOnSaleHouses" 
                                         :key="house._id"
                                         :class="{'current-house': house._id === this.house._id}">
-                                        <td>{{ house.户型 }}</td>
-                                        <td>{{ house.面积 }}㎡</td>
-                                        <td>{{ house.单价 }}元/㎡</td>
-                                        <td>{{ house.总价 }}万</td>
-                                        <td>{{ house.楼层 }}</td>
-                                        <td>
+                                        <td class="text-nowrap">{{ house.户型 }}</td>
+                                        <td class="text-nowrap">{{ house.面积 }}㎡</td>
+                                        <td class="text-nowrap">{{ house.单价 }}元/㎡</td>
+                                        <td class="text-nowrap">{{ house.总价 }}万</td>
+                                        <td class="text-nowrap">{{ house.楼层 }}</td>
+                                        <td class="text-nowrap">
                                             <a v-if="house.房源链接" 
                                                :href="house.房源链接" 
                                                target="_blank" 
@@ -236,22 +268,31 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>户型</th>
-                                        <th>面积</th>
-                                        <th>单价</th>
-                                        <th>总价</th>
-                                        <th>楼层</th>
-                                        <th>成交时间</th>
+                                        <th class="text-nowrap">户型</th>
+                                        <th class="text-nowrap">面积</th>
+                                        <th class="text-nowrap">单价</th>
+                                        <th class="text-nowrap">总价</th>
+                                        <th class="text-nowrap">楼层</th>
+                                        <th class="text-nowrap">成交时间</th>
+                                        <th class="text-nowrap">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="house in sortedSoldHouses" :key="house._id">
-                                        <td>{{ house.户型 }}</td>
-                                        <td>{{ house.面积 }}㎡</td>
-                                        <td>{{ house.单价 }}元/㎡</td>
-                                        <td>{{ house.总价 }}万</td>
-                                        <td>{{ house.楼层 }}</td>
-                                        <td>{{ house.成交时间 }}</td>
+                                        <td class="text-nowrap">{{ house.户型 }}</td>
+                                        <td class="text-nowrap">{{ house.面积 }}㎡</td>
+                                        <td class="text-nowrap">{{ house.单价 }}元/㎡</td>
+                                        <td class="text-nowrap">{{ house.总价 }}万</td>
+                                        <td class="text-nowrap">{{ house.楼层 }}</td>
+                                        <td class="text-nowrap">{{ house.成交时间 }}</td>
+                                        <td class="text-nowrap">
+                                            <a v-if="house.房源链接" 
+                                               :href="house.房源链接" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                查看详情
+                                            </a>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>

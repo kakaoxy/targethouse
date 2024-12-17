@@ -55,9 +55,159 @@ const app = createApp({
                     ...house,
                     楼层: house.总层数 ? `${house.楼层}/共${house.总层数}层` : house.楼层
                 }));
+        },
+
+        onSaleDistribution() {
+            console.log('开始统计在售房源分布...');
+            console.log('当前在售房源总数:', this.onSaleHouses?.length || 0);
+
+            // 按户型分类统计
+            const houseTypes = {
+                '一室': {
+                    pattern: /^[一1]室/,
+                    order: 1,
+                    display: '1房'
+                },
+                '两室': {
+                    pattern: /^[两二2]室/,
+                    order: 2,
+                    display: '2房'
+                },
+                '三室': {
+                    pattern: /^[三3]室/,
+                    order: 3,
+                    display: '3房'
+                },
+                '四室': {
+                    pattern: /^[四4]室/,
+                    order: 4,
+                    display: '4房'
+                }
+            };
+
+            // 按户型分组并统计
+            const distribution = {};
+
+            // 初始化所有户型的统计数据
+            Object.entries(houseTypes).forEach(([type, info]) => {
+                distribution[type] = {
+                    户型: info.display,
+                    count: 0,
+                    最低挂牌单价: Infinity,
+                    最低单价上架时间: '',
+                    order: info.order
+                };
+            });
+
+            // 添加"其他"类型
+            distribution['其他'] = {
+                户型: '其他',
+                count: 0,
+                最低挂牌单价: Infinity,
+                最低单价上架时间: '',
+                order: 5
+            };
+
+            // 统计每个房源
+            if (this.onSaleHouses && this.onSaleHouses.length > 0) {
+                this.onSaleHouses.forEach(house => {
+                    console.log('处理房源:', {
+                        户型: house.户型,
+                        单价: house.单价,
+                        挂牌时间: house.挂牌时间
+                    });
+
+                    let matched = false;
+                    for (const [type, info] of Object.entries(houseTypes)) {
+                        if (house.户型 && house.户型.match(info.pattern)) {
+                            distribution[type].count += 1;
+                            console.log(`匹配到户型 ${type}(${info.display}), 当前数量: ${distribution[type].count}`);
+                            
+                            const price = parseFloat(house.单价);
+                            if (price && price < distribution[type].最低挂牌单价) {
+                                distribution[type].最低挂牌单价 = price;
+                                distribution[type].最低单价上架时间 = house.挂牌时间 || '';
+                            }
+                            matched = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!matched) {
+                        distribution['其他'].count += 1;
+                        console.log(`未匹配到具体户型，归类为"其他", 当前数量: ${distribution['其他'].count}`);
+                        
+                        const price = parseFloat(house.单价);
+                        if (price && price < distribution['其他'].最低挂牌单价) {
+                            distribution['其他'].最低挂牌单价 = price;
+                            distribution['其他'].最低单价上架时间 = house.挂牌时间 || '';
+                        }
+                    }
+                });
+            }
+
+            // 输出最终统计结果
+            console.log('在售房源分布统计结果:', Object.entries(distribution).map(([type, data]) => ({
+                户型: data.户型,
+                在售套数: data.count,
+                最低挂牌单价: data.最低挂牌单价 === Infinity ? '-' : Math.round(data.最低挂牌单价).toLocaleString(),
+                最低单价上架时间: this.formatDate(data.最低单价上架时间)
+            })));
+
+            // 转换为数组并排序
+            const result = Object.values(distribution)
+                .sort((a, b) => a.order - b.order)
+                .map(item => ({
+                    户型: item.户型,
+                    在售套数: item.count,
+                    最低挂牌单价: item.最低挂牌单价 === Infinity ? '-' : Math.round(item.最低挂牌单价).toLocaleString(),
+                    最低单价上架时间: this.formatDate(item.最低单价上架时间)
+                }));
+
+            console.log('最终返回的分布数据:', result);  // 添加这行调试输出
+            return result;
         }
     },
     methods: {
+        // 格式化户型显示
+        formatHouseType(type) {
+            const typeMap = {
+                '一室': '1房',
+                '两室': '2房',
+                '三室': '3房',
+                '四室': '4房',
+                '其他': '其他'
+            };
+            return typeMap[type] || type;
+        },
+
+        // 统一日期格式化
+        formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                // 处理多种可能的日期格式
+                let date;
+                if (dateStr.includes('年')) {
+                    // 处理 "YYYY年MM月DD日" 格式
+                    const parts = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                    if (parts) {
+                        date = new Date(parts[1], parts[2] - 1, parts[3]);
+                    }
+                } else {
+                    date = new Date(dateStr);
+                }
+
+                if (isNaN(date.getTime())) return dateStr;
+
+                return date.getFullYear() + '.' + 
+                       String(date.getMonth() + 1).padStart(2, '0') + '.' +
+                       String(date.getDate()).padStart(2, '0');
+            } catch (e) {
+                console.error('日期格式化错误:', e);
+                return dateStr;
+            }
+        },
+
         async loadData() {
             try {
                 const params = new URLSearchParams(window.location.search);
@@ -77,6 +227,11 @@ const app = createApp({
                 });
                 console.log('在售房源数据:', onSaleResponse.data.data);
                 this.onSaleHouses = onSaleResponse.data.data || [];
+                
+                // 强制更新视图
+                this.$nextTick(() => {
+                    console.log('视图已更新，当前在售房源分布:', this.onSaleDistribution);
+                });
 
                 // 获取成交房源数据
                 const soldResponse = await axios.get('/api/houses/sold', {
@@ -86,7 +241,42 @@ const app = createApp({
                     }
                 });
                 console.log('成交房源数据:', soldResponse.data.data);
-                this.soldHouses = soldResponse.data.data || [];
+                // 处理成交房源数据，添加房源链接
+                this.soldHouses = (soldResponse.data.data || []).map(house => {
+                    // 构建房源链接
+                    let houseLink = '';
+                    // 优先使用原有链接
+                    if (house.房源链接) {
+                        houseLink = house.房源链接;
+                    } 
+                    // 如果有房源ID，构建链接
+                    else if (house.房源ID) {
+                        const cityDomain = {
+                            '上海': 'sh',
+                            '北京': 'bj',
+                            '广州': 'gz',
+                            '深圳': 'sz'
+                        }[house.城市 || '上海'] || 'sh';
+                        
+                        houseLink = `https://${cityDomain}.ke.com/chengjiao/${house.房源ID}.html`;
+                    }
+                    // 如果有贝壳编号，也可以构建链接
+                    else if (house.贝壳编号) {
+                        const cityDomain = {
+                            '上海': 'sh',
+                            '北京': 'bj',
+                            '广州': 'gz',
+                            '深圳': 'sz'
+                        }[house.城市 || '上海'] || 'sh';
+                        
+                        houseLink = `https://${cityDomain}.ke.com/chengjiao/${house.贝壳编号}.html`;
+                    }
+
+                    return {
+                        ...house,
+                        房源链接: houseLink  // 直接在加载数据时设置房源链接
+                    };
+                });
 
                 // 如果有具体房源ID，获取该房源信息
                 if (houseId) {
@@ -246,35 +436,77 @@ const app = createApp({
         calculateHistoryHighs() {
             // 按户型分类统计
             const houseTypes = {
-                '1房': /^[一1]室/,
-                '2房': /^[二2]室/,
-                '3房': /^[三3]室/,
-                '4房': /^[四4]室/,
-                '其他': /./
+                '1房': {
+                    pattern: /^[一1]室/,
+                    order: 1
+                },
+                '2房': {
+                    pattern: /^[两二2]室/,
+                    order: 2
+                },
+                '3房': {
+                    pattern: /^[三3]室/,
+                    order: 3
+                },
+                '4房': {
+                    pattern: /^[四4]室/,
+                    order: 4
+                },
+                '其他': {
+                    pattern: /./,
+                    order: 5
+                }
             };
 
-            this.historyHighs = Object.entries(houseTypes).map(([type, pattern]) => {
-                // 筛选该户型的所有成交记录
-                const typeHouses = this.soldHouses.filter(h => 
-                    type === '其他' ? 
-                    !Object.values(houseTypes).slice(0, -1).some(p => h.户型.match(p)) :
-                    h.户型.match(pattern)
-                );
-
-                if (typeHouses.length === 0) return null;
-
-                // 找出最高单价记录
-                const maxPriceHouse = typeHouses.reduce((max, house) => 
-                    parseFloat(house.单价) > parseFloat(max.单价) ? house : max
-                );
-
-                return {
+            const stats = {};
+            
+            // 初始化统计对象
+            Object.keys(houseTypes).forEach(type => {
+                stats[type] = {
                     户型: type,
-                    最高单价: maxPriceHouse.单价,
-                    成交套数: typeHouses.length,
-                    成交时间: maxPriceHouse.成交时间
+                    成交套数: 0,
+                    最高单价: 0,
+                    成交时间: '',
+                    order: houseTypes[type].order
                 };
-            }).filter(Boolean);
+            });
+
+            // 统计每个房源
+            this.soldHouses.forEach(house => {
+                let matched = false;
+                for (const [type, info] of Object.entries(houseTypes)) {
+                    if (type === '其他') continue;
+                    if (house.户型?.match(info.pattern)) {
+                        stats[type].成交套数++;
+                        const price = parseFloat(house.单价);
+                        if (price > stats[type].最高单价) {
+                            stats[type].最高单价 = price;
+                            stats[type].成交时间 = house.成交时间;
+                        }
+                        matched = true;
+                        break;
+                    }
+                }
+                
+                if (!matched) {
+                    stats['其他'].成交套数++;
+                    const price = parseFloat(house.单价);
+                    if (price > stats['其他'].最高单价) {
+                        stats['其他'].最高单价 = price;
+                        stats['其他'].成交时间 = house.成交时间;
+                    }
+                }
+            });
+
+            // 转换为数组并排序
+            this.historyHighs = Object.values(stats)
+                .sort((a, b) => a.order - b.order)
+                .map(item => ({
+                    户型: item.户型,
+                    成交套数: item.成交套数 || 0,  // 确保显示0
+                    最高单价: item.最高单价 ? Math.round(item.最高单价).toLocaleString() : '-',
+                    成交时间: this.formatDate(item.成交时间)
+                }));
         },
 
         drawPriceChart() {
