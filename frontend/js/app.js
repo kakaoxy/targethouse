@@ -588,8 +588,7 @@ const app = createApp({
 
         openEvaluation(house) {
             const params = new URLSearchParams({
-                id: house._id,
-                community: house.小区名
+                id: house._id
             });
             window.open(`evaluation.html?${params.toString()}`, '_blank');
         }

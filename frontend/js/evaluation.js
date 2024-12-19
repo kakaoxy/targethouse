@@ -212,36 +212,34 @@ const app = createApp({
             try {
                 const params = new URLSearchParams(window.location.search);
                 const houseId = params.get('id');
-                const communityName = params.get('community');
                 
-                if (!communityName) {
+                if (!houseId) {
                     throw new Error('缺少必要参数');
                 }
 
-                // 获取在售房源数据
-                const onSaleResponse = await axios.get('/api/houses/on-sale', {
+                // 先获取指定id的房源信息
+                const houseResponse = await axios.get(`/api/houses/detail/${houseId}`);
+                if (!houseResponse.data || !houseResponse.data.data) {
+                    throw new Error('未找到房源信息');
+                }
+                
+                this.house = houseResponse.data.data;
+                const communityId = this.house.小区ID;  // 使用小区ID
+
+                // 使用小区ID获取在售房源数据
+                const onSaleResponse = await axios.get(`/api/houses/community/${communityId}`, {
                     params: {
-                        community: communityName,
-                        limit: 1000
+                        type: 'on-sale'
                     }
                 });
-                console.log('在售房源数据:', onSaleResponse.data.data);
                 this.onSaleHouses = onSaleResponse.data.data || [];
-                
-                // 强制更新视图
-                this.$nextTick(() => {
-                    console.log('视图已更新，当前在售房源分布:', this.onSaleDistribution);
-                });
 
                 // 获取成交房源数据
-                const soldResponse = await axios.get('/api/houses/sold', {
+                const soldResponse = await axios.get(`/api/houses/community/${communityId}`, {
                     params: {
-                        community: communityName,
-                        limit: 1000
+                        type: 'sold'
                     }
                 });
-                console.log('成交房源数据:', soldResponse.data.data);
-                // 处理成交房源数据，添加房源链接
                 this.soldHouses = (soldResponse.data.data || []).map(house => {
                     // 构建房源链接
                     let houseLink = '';
@@ -278,74 +276,10 @@ const app = createApp({
                     };
                 });
 
-                // 如果有具体房源ID，获取该房源信息
-                if (houseId) {
-                    const house = this.onSaleHouses.find(h => h._id === houseId);
-                    console.log('查找MongoDB ID:', houseId);
-                    console.log('原始房源数据:', JSON.stringify(house, null, 2)); // 添加详细的数据日志
-                    
-                    if (house) {
-                        // 处理户型图URL
-                        let floorPlanImage = house.户型图;
-                        if (floorPlanImage) {
-                            floorPlanImage = floorPlanImage.split('?')[0];
-                        }
-
-                        // 处理建筑年代
-                        let buildingYear = '';
-                        if (house.建筑年代 !== undefined && house.建筑年代 !== null) {
-                            buildingYear = typeof house.建筑年代 === 'number' 
-                                ? house.建筑年代.toString() 
-                                : house.建筑年代.toString().replace(/[年建]/g, '').trim();
-                        }
-
-                        // 处理朝向
-                        let orientation = house.朝向;
-                        if (orientation) {
-                            orientation = orientation.toString().replace(/\n/g, '').trim();
-                        }
-
-                        // 处理梯户比
-                        let elevatorRatio = house.梯户比;
-                        if (elevatorRatio) {
-                            elevatorRatio = elevatorRatio.toString().replace(/\n/g, '').trim();
-                        }
-
-                        // 处理区域和商圈
-                        const district = house.区域?.toString().trim();
-                        const area = house.商圈?.toString().trim();
-
-                        // 处理上次交易和抵押信息
-                        const lastDeal = house.上次交易?.toString().trim();
-                        const mortgage = house.抵押信息?.toString().trim();
-
-                        this.house = {
-                            ...house,  // 保留原始数据
-                            户型图: floorPlanImage,
-                            区域: district || '暂无',
-                            商圈: area || '暂无',
-                            朝向: orientation || '暂无',
-                            建筑年代: buildingYear || '暂无',
-                            上次交易: lastDeal || '暂无记录',
-                            抵押信息: mortgage || '暂无',
-                            梯户比: elevatorRatio || '暂无'
-                        };
-
-                        // 打印处理前后的对比
-                        console.log('原始数据中的关键字段:', {
-                            区域: house.区域,
-                            商圈: house.商圈,
-                            朝向: house.朝向,
-                            建筑年代: house.建筑年代,
-                            上次交易: house.上次交易,
-                            抵押信息: house.抵押信息
-                        });
-                        
-                        console.log('处理后的数据:', this.house);
-                    } else {
-                        console.error('未找到对应房源，MongoDB ID:', houseId);
-                    }
-                }
+                // 强制更新视图
+                this.$nextTick(() => {
+                    console.log('视图已更新，当前在售房源分布:', this.onSaleDistribution);
+                });
 
                 // 计算小区统计信息
                 await this.calculateCommunityStats();
@@ -361,7 +295,7 @@ const app = createApp({
 
             } catch (error) {
                 console.error('加载数据失败:', error);
-                ElMessage.error('数据加载失败，请稍后重试');
+                alert(error.response?.data?.message || error.message || '数据加载失败，请稍后重试');
             } finally {
                 this.loading = false;
             }

@@ -497,3 +497,37 @@ class Database:
             logger.error(f"批量保存在售房源数据失败: {str(e)}")
             logger.error(traceback.format_exc())
             raise
+
+    def get_house_by_id(self, house_id: str) -> Dict:
+        """通过ID获取房源详情"""
+        try:
+            # 先在在售房源中查找
+            house = self.collection_on_sale.find_one({'_id': ObjectId(house_id)})
+            if house:
+                house['_id'] = str(house['_id'])
+                return house
+            
+            # 如果在售房源中没找到，在成交房源中查找
+            house = self.collection_sold.find_one({'_id': ObjectId(house_id)})
+            if house:
+                house['_id'] = str(house['_id'])
+                return house
+            
+            return None
+        except Exception as e:
+            logger.error(f"获取房源详情失败: {str(e)}")
+            raise
+
+    def get_houses_by_community_id(self, collection_name: str, community_id: str, limit: int = 1000) -> List[Dict]:
+        """通过小区ID获取房源数据"""
+        try:
+            collection = self.db[collection_name]
+            houses = collection.find({"小区ID": community_id}).limit(limit)
+            result = []
+            for house in houses:
+                house['_id'] = str(house['_id'])
+                result.append(house)
+            return result
+        except Exception as e:
+            logger.error(f"获取小区房源数据失败: {str(e)}")
+            raise

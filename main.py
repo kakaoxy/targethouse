@@ -191,6 +191,39 @@ async def add_on_sale_houses(houses: List[Dict] = Body(...)):
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
+@app.get("/api/houses/detail/{house_id}")
+async def get_house_detail(house_id: str):
+    """获取指定ID的房源详情"""
+    try:
+        house = db.get_house_by_id(house_id)
+        if house:
+            return {"code": 200, "message": "success", "data": house}
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "未找到房源信息", "data": None}
+            )
+    except Exception as e:
+        logger.error(f"获取房源详情失败: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": str(e)}
+        )
+
+@app.get("/api/houses/community/{community_id}")
+async def get_community_houses(community_id: str, type: str = Query(..., description="查询类型：on-sale或sold")):
+    """获取指定小区ID的房源数据"""
+    try:
+        collection_name = "ershoufang" if type == "on-sale" else "chengjiao"
+        houses = db.get_houses_by_community_id(collection_name, community_id)
+        return {"code": 200, "message": "success", "data": houses}
+    except Exception as e:
+        logger.error(f"获取小区房源数据失败: {str(e)}\n{traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": str(e)}
+        )
+
 # 挂载静态文件
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
